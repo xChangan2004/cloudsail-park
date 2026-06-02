@@ -1,0 +1,100 @@
+server:
+  port: 8080
+  # 启用 HTTP/2
+  http2:
+    enabled: true
+  compression:
+    enabled: true
+    min-response-size: 2048
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript
+    excluded-user-agents: IE6, IE7
+  undertow:
+    # 线程池配置
+    threads:
+      # I/O线程数（建议设置为CPU核心数的1-2倍）
+      io: 16
+      # 工作线程数（建议设置为CPU核心数的8-16倍）
+      worker: 256
+    # 缓冲池配置
+    buffer-size: 1024
+    # 是否直接使用内存作为缓冲区
+    direct-buffers: true
+    # 请求超时时间（毫秒）
+    no-request-timeout: 30000
+    # 限制 HTTP POST 请求体大小
+    max-http-post-size: 2MB
+    # 访问日志（生产建议开）
+    accesslog:
+      enabled: true
+      dir: ./logs
+      prefix: access_log.
+      suffix: .log
+      pattern: "%t %a %r %s (%D ms)"
+      rotate: true
+    # 高级选项
+    options:
+      server:
+        record-request-start-time: true
+
+spring:
+  jackson:
+    default-property-inclusion: non_null
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      database: 0
+      timeout: 3000
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/cloudsail-park?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+logging:
+  level:
+    com.changan: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    path: ./logs
+    name: ./logs/cloudsail-park.log
+
+springdoc:
+  default-flat-param-object: true
+
+sa-token:
+  # token 名称（同时也是 cookie 名称）
+  token-name: Authorization
+  # token 有效期（单位：秒） 默认30天，-1 代表永久有效
+  timeout: 2592000
+  # token 最低活跃频率（单位：秒），如果 token 超过此时间没有访问系统就会被冻结，默认-1 代表不限制，永不冻结
+  active-timeout: -1
+  # 是否允许同一账号多地同时登录 （为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
+  is-share: false
+  # token 风格（默认可取值：uuid、simple-uuid、random-32、random-64、random-128、tik）
+  token-style: simple-uuid
+  # 是否输出操作日志
+  is-log: true
+

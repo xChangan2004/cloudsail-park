@@ -1,0 +1,14 @@
+package com.changan.service;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+@MapperScan("com.changan.service.mapper")
+public class AdminApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(AdminApplication.class, args);
+    }
+}
