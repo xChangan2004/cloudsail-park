@@ -19,10 +19,6 @@ public interface RegexConstants extends RegexPool {
      * 用户名正则。6~32位的字母、数字、下划线
      */
     String USERNAME_PATTERN = "^\\w{4,32}$";
-    /**
-     * 验证码正则, 6位数字或字母
-     */
-    String VERIFY_CODE_PATTERN = "^[a-zA-Z\\d]{6}$";
 
     /**
      * 车牌号正则（支持普通车牌、新能源车牌、挂学警港澳）

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
-public class BasePO implements Serializable {
+public class BaseEntity implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;

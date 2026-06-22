@@ -16,7 +16,7 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>CloudSail-Park</name>
+    <name>CloudSail-Park-Admin</name>
     <description>CloudSail Park is an intelligent parking management platform for commercial scenarios, featuring user and admin portals. It supports vehicle entry/exit, dynamic billing, online payment, monthly pass management, and data statistics, with simulated access flows and reserved IoT interfaces for future gate/camera integration.</description>
 
     <modules>
@@ -36,7 +36,6 @@
         <knife4j.version>4.5.0</knife4j.version>
         <springdoc-openapi.version>2.8.9</springdoc-openapi.version>
         <redisson.version>3.37.0</redisson.version>
-        <alipay-easysdk.version>2.2.3</alipay-easysdk.version>
     </properties>
 
     <dependencyManagement>
@@ -44,7 +43,7 @@
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
-                <version>8.0.33</version>
+                <version>${mysql.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.baomidou</groupId>
@@ -90,11 +89,6 @@
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-data-33</artifactId>
                 <version>${redisson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.alipay.sdk</groupId>
-                <artifactId>alipay-easysdk</artifactId>
-                <version>${alipay-easysdk.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

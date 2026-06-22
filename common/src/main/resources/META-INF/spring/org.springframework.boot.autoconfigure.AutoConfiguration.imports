@@ -1,0 +1,8 @@
+com.changan.common.config.mybatis.MybatisPlusConfig
+com.changan.common.config.SaPermissionConfig
+com.changan.common.config.Knife4jConfig
+com.changan.common.config.mvc.JacksonConfig
+com.changan.common.config.mvc.MvcConfig
+com.changan.common.config.redisson.RedissonConfig
+com.changan.common.exceptions.GlobalExceptionHandler
+com.changan.common.config.ThreadPoolConfig

@@ -7,9 +7,11 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum CommonStatus implements BaseEnum {
-    DISABLE(0, "禁用"),
-    ENABLE(1, "启用"),
+public enum MenuType implements BaseEnum {
+
+    CATALOGUE(1, "目录"),
+    MENU(2, "菜单"),
+    BUTTON(3, "按钮"),
     ;
 
     @EnumValue
@@ -17,20 +19,20 @@ public enum CommonStatus implements BaseEnum {
     private final int value;
     private final String desc;
 
-    public static CommonStatus of(Integer value) {
+    public static MenuType of(Integer value) {
         if (value == null) {
             return null;
         }
-        for (CommonStatus commonStatus : values()) {
-            if (commonStatus.getValue() == value) {
-                return commonStatus;
+        for (MenuType menuType : values()) {
+            if (menuType.getValue() == value) {
+                return menuType;
             }
         }
         return null;
     }
 
     public static String desc(Integer value) {
-        CommonStatus status = of(value);
-        return status.getDesc();
+        MenuType menuType = of(value);
+        return menuType.getDesc();
     }
 }

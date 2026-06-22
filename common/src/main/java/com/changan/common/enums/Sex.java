@@ -7,9 +7,10 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum CommonStatus implements BaseEnum {
-    DISABLE(0, "禁用"),
-    ENABLE(1, "启用"),
+public enum Sex implements BaseEnum {
+
+    FEMALE(0, "女"),
+    MALE(1, "男"),
     ;
 
     @EnumValue
@@ -17,20 +18,20 @@ public enum CommonStatus implements BaseEnum {
     private final int value;
     private final String desc;
 
-    public static CommonStatus of(Integer value) {
+    public static Sex of(Integer value) {
         if (value == null) {
             return null;
         }
-        for (CommonStatus commonStatus : values()) {
-            if (commonStatus.getValue() == value) {
-                return commonStatus;
+        for (Sex sex : values()) {
+            if (sex.getValue() == value) {
+                return sex;
             }
         }
         return null;
     }
 
     public static String desc(Integer value) {
-        CommonStatus status = of(value);
-        return status.getDesc();
+        Sex sex = of(value);
+        return sex.getDesc();
     }
 }

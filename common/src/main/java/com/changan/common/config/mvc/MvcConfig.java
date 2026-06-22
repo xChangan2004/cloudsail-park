@@ -2,13 +2,13 @@ package com.changan.common.config.mvc;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import com.changan.common.converter.StringToBaseEnumConverterFactory;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration
+@AutoConfiguration
 public class MvcConfig implements WebMvcConfigurer {
 
     @Override
@@ -19,7 +19,13 @@ public class MvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // 开启注解鉴权（@SaCheckLogin、@SaCheckRole...）
-        registry.addInterceptor(new SaInterceptor()).addPathPatterns("/**");
+        registry.addInterceptor(new SaInterceptor())
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/user/login",
+                        "/captcha/generate",
+                        "/captcha/check"
+                );
     }
 
     /**

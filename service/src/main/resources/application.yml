@@ -27,7 +27,7 @@ server:
     accesslog:
       enabled: true
       dir: ./logs
-      prefix: access_log.
+      prefix: access_log
       suffix: .log
       pattern: "%t %a %r %s (%D ms)"
       rotate: true
@@ -37,6 +37,8 @@ server:
         record-request-start-time: true
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   jackson:
     default-property-inclusion: non_null
   data:
@@ -44,7 +46,7 @@ spring:
       host: localhost
       port: 6379
       password: 123456
-      database: 0
+      database: 5
       timeout: 3000
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -90,11 +92,10 @@ sa-token:
   # token 最低活跃频率（单位：秒），如果 token 超过此时间没有访问系统就会被冻结，默认-1 代表不限制，永不冻结
   active-timeout: -1
   # 是否允许同一账号多地同时登录 （为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
-  is-concurrent: true
+  is-concurrent: false
   # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
   is-share: false
   # token 风格（默认可取值：uuid、simple-uuid、random-32、random-64、random-128、tik）
   token-style: simple-uuid
   # 是否输出操作日志
   is-log: true
-

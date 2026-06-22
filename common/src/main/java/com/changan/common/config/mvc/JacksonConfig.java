@@ -4,14 +4,14 @@ import com.changan.common.utils.DateUtils;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 import java.math.BigInteger;
 import java.time.format.DateTimeFormatter;
 
-@Configuration
+@AutoConfiguration
 public class JacksonConfig {
 
     @Bean

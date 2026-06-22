@@ -12,7 +12,7 @@ import lombok.experimental.Accessors;
 @Schema(description = "分页请求参数")
 @Accessors(chain = true)
 public class PageQuery {
-    public static final Integer DEFAULT_PAGE_SIZE = 20;
+    public static final Integer DEFAULT_PAGE_SIZE = 10;
     public static final Integer DEFAULT_PAGE_NUM = 1;
 
     @Schema(description = "页码", example = "1")
