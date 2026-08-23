@@ -7,9 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.admin.mapper.ParkingLotMapper;
 import com.changan.admin.mapper.ParkingSpaceMapper;
 import com.changan.admin.service.IParkingSpaceService;
-import com.changan.common.config.redisson.annotations.Lock;
 import com.changan.common.domain.dto.PageDTO;
-import com.changan.common.enums.CommonStatus;
 import com.changan.common.enums.ParkingSpaceStatus;
 import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.po.ParkingLot;
@@ -28,7 +26,6 @@ import java.util.stream.Collectors;
 public class ParkingSpaceServiceImpl extends ServiceImpl<ParkingSpaceMapper, ParkingSpace> implements IParkingSpaceService {
 
     private final ParkingLotMapper parkingLotMapper;
-    private final ParkingSpaceMapper parkingSpaceMapper;
 
     @Override
     public PageDTO<ParkingSpace> queryParkingSpacePage(ParkingSpaceQuery query) {
@@ -128,8 +125,12 @@ public class ParkingSpaceServiceImpl extends ServiceImpl<ParkingSpaceMapper, Par
         if (space == null) {
             throw new BizIllegalException("车位不存在");
         }
+        // 1.1.占用中的车位不能删除
+        if (space.getStatus() == ParkingSpaceStatus.OCCUPIED) {
+            throw new BizIllegalException("占用中的车位不能删除");
+        }
         // 2.删除车位信息
-        parkingSpaceMapper.deleteById(id);
+        removeById(id);
         // 3.移除停车场将相关车位减少
         parkingLotMapper.update(new LambdaUpdateWrapper<ParkingLot>()
                 .eq(ParkingLot::getId, space.getLotId())
