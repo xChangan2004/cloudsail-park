@@ -9,11 +9,17 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("sys_menu")
 @Schema(name = "系统菜单实体")
-public class SysMenu extends BaseEntity {
+public class SysMenu extends BaseEntity implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "父菜单ID")
     private Long parentId;

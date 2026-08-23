@@ -3,7 +3,6 @@ package com.changan.admin.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.changan.admin.service.ISysMenuService;
 import com.changan.common.domain.R;
-import com.changan.common.domain.dto.PageDTO;
 import com.changan.model.po.SysMenu;
 import com.changan.model.query.SysMenuQuery;
 import com.changan.model.vo.MenuSimpleVO;

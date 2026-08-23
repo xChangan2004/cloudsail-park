@@ -1,5 +1,6 @@
 package com.changan.common.config.redisson;
 
+import com.changan.common.config.redisson.aspect.LockAspect;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
@@ -8,7 +9,6 @@ import org.redisson.spring.data.connection.RedissonConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -69,5 +69,10 @@ public class RedissonConfig {
 
         template.afterPropertiesSet();
         return template;
+    }
+
+    @Bean
+    public LockAspect lockAspect(RedissonClient redissonClient) {
+        return new LockAspect(redissonClient);
     }
 }

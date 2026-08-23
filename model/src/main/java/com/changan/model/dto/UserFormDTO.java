@@ -12,7 +12,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class UserSaveOrUpdateDTO {
+public class UserFormDTO {
 
     @Schema(description = "用户ID")
     private Long id;

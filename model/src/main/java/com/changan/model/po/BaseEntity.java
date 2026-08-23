@@ -6,17 +6,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
-public class BaseEntity implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class BaseEntity {
 
     @TableId(type = IdType.ASSIGN_ID)
     @Schema(description = "主键ID")

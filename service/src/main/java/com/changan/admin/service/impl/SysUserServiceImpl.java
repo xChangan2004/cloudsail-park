@@ -9,6 +9,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.admin.mapper.*;
+import com.changan.admin.service.ISysUserService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
 import com.changan.common.enums.MenuType;
@@ -16,22 +18,12 @@ import com.changan.common.exceptions.BadRequestException;
 import com.changan.common.exceptions.BizIllegalException;
 import com.changan.common.utils.PasswordUtils;
 import com.changan.common.utils.TreeUtils;
+import com.changan.model.dto.UserFormDTO;
 import com.changan.model.dto.UserLoginDTO;
 import com.changan.model.dto.UserResetPwdDTO;
-import com.changan.model.dto.UserSaveOrUpdateDTO;
-import com.changan.model.po.SysMenu;
-import com.changan.model.po.SysRole;
-import com.changan.model.po.SysRoleMenu;
-import com.changan.model.po.SysUser;
-import com.changan.model.po.SysUserRole;
+import com.changan.model.po.*;
 import com.changan.model.query.SysUserQuery;
 import com.changan.model.vo.*;
-import com.changan.admin.mapper.SysMenuMapper;
-import com.changan.admin.mapper.SysRoleMapper;
-import com.changan.admin.mapper.SysRoleMenuMapper;
-import com.changan.admin.mapper.SysUserRoleMapper;
-import com.changan.admin.mapper.SysUserMapper;
-import com.changan.admin.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -240,7 +232,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     @Transactional
-    public void saveUser(UserSaveOrUpdateDTO dto) {
+    public void saveUser(UserFormDTO dto) {
         // 1.校验用户名唯一
         Long count = lambdaQuery()
                 .eq(SysUser::getUsername, dto.getUsername())
@@ -268,7 +260,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     @Transactional
-    public void deleteById(Long id) {
+    public void deleteUserById(Long id) {
         // 1.查询用户
         SysUser user = getById(id);
         if (user == null) {
@@ -289,7 +281,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     @Transactional
-    public void updateUser(UserSaveOrUpdateDTO dto) {
+    public void updateUser(UserFormDTO dto) {
         // 1.校验用户名唯一，去除自己
         Long count = lambdaQuery()
                 .eq(SysUser::getUsername, dto.getUsername())

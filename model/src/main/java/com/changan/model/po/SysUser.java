@@ -7,13 +7,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_user")
 @Schema(name = "系统用户实体")
-public class SysUser extends BaseEntity {
+public class SysUser extends BaseEntity implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "用户名")
     private String username;

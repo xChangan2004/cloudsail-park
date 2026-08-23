@@ -7,11 +7,17 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("sys_role")
 @Schema(name = "系统角色实体")
-public class SysRole extends BaseEntity {
+public class SysRole extends BaseEntity implements Serializable {
+
+  @Serial
+  private static final long serialVersionUID = 1L;
 
   @NotBlank(message = "角色名称不能为空")
   @Schema(description = "角色名称")

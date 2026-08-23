@@ -1,15 +1,14 @@
 package com.changan.admin.controller;
 
+import com.changan.admin.service.ISysUserService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
+import com.changan.model.dto.UserFormDTO;
 import com.changan.model.dto.UserLoginDTO;
 import com.changan.model.dto.UserResetPwdDTO;
-import com.changan.model.dto.UserSaveOrUpdateDTO;
-import com.changan.model.po.SysUser;
 import com.changan.model.query.SysUserQuery;
 import com.changan.model.vo.LoginVO;
-import com.changan.admin.service.ISysUserService;
 import com.changan.model.vo.UserDetailVO;
 import com.changan.model.vo.UserPageVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,7 +34,7 @@ public class SysUserController {
 
     @PostMapping
     @Operation(summary = "新增用户")
-    public R<Void> saveUser(@Valid @RequestBody UserSaveOrUpdateDTO dto) {
+    public R<Void> saveUser(@Valid @RequestBody UserFormDTO dto) {
         userService.saveUser(dto);
         return R.ok();
     }
@@ -75,15 +74,15 @@ public class SysUserController {
     @DeleteMapping("/{id}")
     @Operation(summary = "删除用户")
 //    @SaCheckPermission("system:user:delete")
-    public R<Void> deleteById(@PathVariable Long id) {
-        userService.deleteById(id);
+    public R<Void> deleteUserById(@PathVariable Long id) {
+        userService.deleteUserById(id);
         return R.ok();
     }
 
     @PutMapping
     @Operation(summary = "修改用户")
 //    @SaCheckPermission("system:user:edit")
-    public R<Void> updateUser(@Valid @RequestBody UserSaveOrUpdateDTO dto) {
+    public R<Void> updateUser(@Valid @RequestBody UserFormDTO dto) {
         userService.updateUser(dto);
         return R.ok();
     }
