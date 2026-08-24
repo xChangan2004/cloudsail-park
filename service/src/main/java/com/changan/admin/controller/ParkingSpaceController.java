@@ -3,7 +3,6 @@ package com.changan.admin.controller;
 import com.changan.admin.service.IParkingSpaceService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
-import com.changan.common.enums.CommonStatus;
 import com.changan.common.enums.ParkingSpaceStatus;
 import com.changan.model.po.ParkingSpace;
 import com.changan.model.query.ParkingSpaceQuery;

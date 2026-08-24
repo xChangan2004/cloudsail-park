@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum RuleFeeType implements BaseEnum {
+public enum FeeRuleType implements BaseEnum {
     STANDARD(1, "标准"),
     PERIOD(2, "时段"),
     ;
@@ -17,20 +17,20 @@ public enum RuleFeeType implements BaseEnum {
     private final int value;
     private final String desc;
 
-    public static RuleFeeType of(Integer value) {
+    public static FeeRuleType of(Integer value) {
         if (value == null) {
             return null;
         }
-        for (RuleFeeType ruleFeeType : values()) {
-            if (ruleFeeType.getValue() == value) {
-                return ruleFeeType;
+        for (FeeRuleType feeRuleType : values()) {
+            if (feeRuleType.getValue() == value) {
+                return feeRuleType;
             }
         }
         return null;
     }
 
     public static String desc(Integer value) {
-        RuleFeeType ruleFeeType = of(value);
-        return ruleFeeType.getDesc();
+        FeeRuleType feeRuleType = of(value);
+        return feeRuleType.getDesc();
     }
 }
