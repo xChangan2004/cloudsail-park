@@ -41,4 +41,12 @@ public class Knife4jConfig {
                 .pathsToMatch("/parking/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi customerAPI() {
+        return GroupedOpenApi.builder()
+                .group("客户管理")
+                .pathsToMatch("/customer/**")
+                .build();
+    }
 }

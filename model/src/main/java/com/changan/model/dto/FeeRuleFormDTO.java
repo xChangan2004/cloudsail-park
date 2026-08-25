@@ -1,6 +1,5 @@
 package com.changan.model.dto;
 
-import com.changan.common.enums.CommonStatus;
 import com.changan.common.enums.FeeRuleType;
 import com.changan.model.po.FeeRule;
 import io.swagger.v3.oas.annotations.media.Schema;

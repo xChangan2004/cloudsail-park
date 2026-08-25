@@ -19,10 +19,4 @@ public interface RegexConstants extends RegexPool {
      * 用户名正则。6~32位的字母、数字、下划线
      */
     String USERNAME_PATTERN = "^\\w{4,32}$";
-
-    /**
-     * 车牌号正则（支持普通车牌、新能源车牌、挂学警港澳）
-     */
-    String PLATE_NUMBER_PATTERN = "^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼宁]" +
-            "[A-HJ-NP-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]$";
 }

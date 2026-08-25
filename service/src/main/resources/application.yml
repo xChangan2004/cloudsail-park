@@ -99,3 +99,8 @@ sa-token:
   token-style: simple-uuid
   # 是否输出操作日志
   is-log: true
+
+# 停车场相关配置
+parking:
+  customer-plate:
+    max-bind-count: 5 # 单个客户最大可绑定的车牌数量
