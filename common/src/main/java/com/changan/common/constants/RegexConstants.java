@@ -19,8 +19,4 @@ public interface RegexConstants extends RegexPool {
      * 用户名正则。6~32位的字母、数字、下划线
      */
     String USERNAME_PATTERN = "^\\w{4,32}$";
-    /**
-     * 日期正则
-     */
-    String DATE_TIME_FORMAT_PATTERN = "yyyy-M-d HH:mm:ss";
 }

@@ -57,4 +57,12 @@ public class Knife4jConfig {
                 .pathsToMatch("/record/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi paymentAPI() {
+        return GroupedOpenApi.builder()
+                .group("支付管理")
+                .pathsToMatch("/pay/**")
+                .build();
+    }
 }

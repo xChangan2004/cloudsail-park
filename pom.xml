@@ -36,6 +36,7 @@
         <knife4j.version>4.5.0</knife4j.version>
         <springdoc-openapi.version>2.8.9</springdoc-openapi.version>
         <redisson.version>3.37.0</redisson.version>
+        <alipay.version>4.34.8.ALL</alipay.version>
     </properties>
 
     <dependencyManagement>
@@ -89,6 +90,11 @@
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-data-33</artifactId>
                 <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alipay.sdk</groupId>
+                <artifactId>alipay-sdk-java</artifactId>
+                <version>${alipay.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

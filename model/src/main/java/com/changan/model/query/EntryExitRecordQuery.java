@@ -1,10 +1,8 @@
 package com.changan.model.query;
 
-import com.changan.common.constants.RegexConstants;
 import com.changan.common.domain.query.PageQuery;
 import com.changan.common.enums.EntryExitStatus;
 import com.changan.common.enums.EntryType;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -34,10 +32,8 @@ public class EntryExitRecordQuery extends PageQuery {
     private EntryExitStatus status;
 
     @Schema(description = "入场开始时间")
-    @JsonFormat(pattern = RegexConstants.DATE_TIME_FORMAT_PATTERN, timezone = "GMT+8")
     private LocalDateTime beginTime;
 
     @Schema(description = "入场结束时间")
-    @JsonFormat(pattern = RegexConstants.DATE_TIME_FORMAT_PATTERN, timezone = "GMT+8")
     private LocalDateTime endTime;
 }

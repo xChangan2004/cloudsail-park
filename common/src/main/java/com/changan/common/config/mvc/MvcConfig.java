@@ -24,7 +24,8 @@ public class MvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/user/login",
                         "/captcha/generate",
-                        "/captcha/check"
+                        "/captcha/check",
+                        "/pay/notify"
                 );
     }
 

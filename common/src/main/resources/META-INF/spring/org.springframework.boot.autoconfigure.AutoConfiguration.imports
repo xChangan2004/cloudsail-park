@@ -6,3 +6,5 @@ com.changan.common.config.mvc.MvcConfig
 com.changan.common.config.redisson.RedissonConfig
 com.changan.common.exceptions.GlobalExceptionHandler
 com.changan.common.config.ThreadPoolConfig
+com.changan.common.config.alipay.AlipayConfig
+com.changan.common.config.alipay.AlipayProperties
