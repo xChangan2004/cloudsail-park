@@ -33,4 +33,7 @@ public class ExitBillVO {
 
     @Schema(description = "应收金额")
     private BigDecimal amount;
+
+    @Schema(description = "订单号")
+    private String orderNo;
 }

@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.admin.mapper.*;
 import com.changan.admin.service.IEntryExitRecordService;
 import com.changan.admin.service.IFeeRuleService;
+import com.changan.admin.service.IParkingOrderService;
 import com.changan.admin.service.IParkingSpaceService;
 import com.changan.admin.strategy.fee.FeeCalculateStrategy;
 import com.changan.admin.strategy.fee.FeeStrategyFactory;
@@ -52,6 +53,8 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
     private final FeeStrategyFactory feeStrategyFactory;
 
     private final IParkingSpaceService parkingSpaceService;
+
+    private final IParkingOrderService parkingOrderService;
 
     @Override
     @Transactional
@@ -181,7 +184,9 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (rows == 0) {
             throw new BizIllegalException("车位状态异常，请人工核查后重试");
         }
-        // 7.清除该场地余位缓存
+        // 7.生成停车订单
+        ParkingOrder order = parkingOrderService.createExitOrder(record, amount);
+        // 8.清除该场地余位缓存
         parkingSpaceService.evictFreeCountCache(record.getLotId());
         // 8.组装账单
         ExitBillVO vo = new ExitBillVO();
@@ -193,6 +198,7 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         vo.setRuleName(rule.getRuleName());
         vo.setRuleDesc(strategy.getRuleDesc(rule));
         vo.setAmount(amount);
+        vo.setOrderNo(order.getOrderNo());
         return vo;
     }
 
