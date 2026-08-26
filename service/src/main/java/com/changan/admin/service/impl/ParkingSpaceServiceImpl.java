@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.admin.mapper.ParkingLotMapper;
 import com.changan.admin.mapper.ParkingSpaceMapper;
 import com.changan.admin.service.IParkingSpaceService;
+import com.changan.common.constants.Constants;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.ParkingSpaceStatus;
 import com.changan.common.exceptions.BizIllegalException;
@@ -14,11 +15,13 @@ import com.changan.model.po.ParkingLot;
 import com.changan.model.po.ParkingSpace;
 import com.changan.model.query.ParkingSpaceQuery;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +29,8 @@ import java.util.stream.Collectors;
 public class ParkingSpaceServiceImpl extends ServiceImpl<ParkingSpaceMapper, ParkingSpace> implements IParkingSpaceService {
 
     private final ParkingLotMapper parkingLotMapper;
+
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public PageDTO<ParkingSpace> queryParkingSpacePage(ParkingSpaceQuery query) {
@@ -161,5 +166,30 @@ public class ParkingSpaceServiceImpl extends ServiceImpl<ParkingSpaceMapper, Par
         space.setId(id);
         space.setStatus(status);
         updateById(space);
+        // 4.清除该场地余位缓存
+        evictFreeCountCache(exists.getLotId());
+    }
+
+    @Override
+    public long countFreeSpaces(Long lotId) {
+        String key = Constants.Spaces.FREE_COUNT_KEY + lotId;
+        // 1.检查Redis中是否有缓存的余位
+        Object cached = redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            return Long.parseLong(cached.toString());
+        }
+        // 2.查数据库
+        Long count = lambdaQuery()
+                .eq(ParkingSpace::getLotId, lotId)
+                .eq(ParkingSpace::getStatus, ParkingSpaceStatus.FREE)
+                .count();
+        // 3.缓存到Redis中，60秒后自动作废
+        redisTemplate.opsForValue().set(key, count, Constants.Spaces.FREE_COUNT_TTL, TimeUnit.SECONDS);
+        return count;
+    }
+
+    @Override
+    public void evictFreeCountCache(Long lotId) {
+        redisTemplate.delete(Constants.Spaces.FREE_COUNT_KEY + lotId);
     }
 }

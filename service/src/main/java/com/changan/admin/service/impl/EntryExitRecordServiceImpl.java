@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.admin.mapper.*;
 import com.changan.admin.service.IEntryExitRecordService;
 import com.changan.admin.service.IFeeRuleService;
+import com.changan.admin.service.IParkingSpaceService;
 import com.changan.admin.strategy.fee.FeeCalculateStrategy;
 import com.changan.admin.strategy.fee.FeeStrategyFactory;
 import com.changan.common.config.redisson.annotations.Lock;
@@ -49,6 +50,8 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
     private final IFeeRuleService feeRuleService;
 
     private final FeeStrategyFactory feeStrategyFactory;
+
+    private final IParkingSpaceService parkingSpaceService;
 
     @Override
     @Transactional
@@ -100,6 +103,8 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (rows == 0) {
             throw new BizIllegalException("车位已被抢占或状态已变化，请重试");
         }
+        // 8.清除该场地余位缓存
+        parkingSpaceService.evictFreeCountCache(dto.getLotId());
     }
 
     @Override
@@ -176,7 +181,9 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (rows == 0) {
             throw new BizIllegalException("车位状态异常，请人工核查后重试");
         }
-        // 7.组装账单
+        // 7.清除该场地余位缓存
+        parkingSpaceService.evictFreeCountCache(record.getLotId());
+        // 8.组装账单
         ExitBillVO vo = new ExitBillVO();
         vo.setRecordId(record.getId());
         vo.setPlateNumber(record.getPlateNumber());

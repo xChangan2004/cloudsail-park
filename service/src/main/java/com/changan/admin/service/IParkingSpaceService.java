@@ -21,4 +21,8 @@ public interface IParkingSpaceService extends IService<ParkingSpace> {
     void deleteParkingSpace(Long id);
 
     void updateParkingSpaceStatus(Long id, ParkingSpaceStatus status);
+
+    long countFreeSpaces(Long lotId);
+
+    void evictFreeCountCache(Long lotId);
 }
