@@ -205,7 +205,7 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
     /**
      * 批量查询停车场名称，转成 id -> name 映射
      */
-    private Map<Long, String> translateLotNames(List<EntryExitRecord> records) {
+    public Map<Long, String> translateLotNames(List<EntryExitRecord> records) {
         Set<Long> ids = records.stream()
                 .map(EntryExitRecord::getLotId)
                 .collect(Collectors.toSet());
@@ -227,7 +227,7 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
     /**
      * 批量查询客户昵称，转成 id -> nickname 映射
      */
-    private Map<Long, String> translateCustomerNames(List<EntryExitRecord> records) {
+    public Map<Long, String> translateCustomerNames(List<EntryExitRecord> records) {
         Set<Long> ids = records.stream()
                 .map(EntryExitRecord::getCustomerId)
                 .collect(Collectors.toSet());
