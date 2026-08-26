@@ -49,4 +49,12 @@ public class Knife4jConfig {
                 .pathsToMatch("/customer/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi entryExitAPI() {
+        return GroupedOpenApi.builder()
+                .group("出入记录管理")
+                .pathsToMatch("/record/**")
+                .build();
+    }
 }

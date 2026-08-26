@@ -127,4 +127,17 @@ public class FeeRuleServiceImpl extends ServiceImpl<FeeRuleMapper, FeeRule> impl
         updated.setStatus(status);
         updateById(updated);
     }
+
+    @Override
+    public FeeRule getEnableRuleByLotId(Long lotId) {
+        FeeRule rule = lambdaQuery()
+                .eq(FeeRule::getLotId, lotId)
+                .eq(FeeRule::getStatus, CommonStatus.ENABLE)
+                .last("LIMIT 1")
+                .one();
+        if (rule == null) {
+            throw new BizIllegalException("该停车场未配置启用的计费规则，无法计算费用");
+        }
+        return rule;
+    }
 }

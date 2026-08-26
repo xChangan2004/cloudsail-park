@@ -28,9 +28,6 @@ public class ParkingLot extends BaseEntity implements Serializable {
     @Schema(description = "总车位数")
     private Integer totalSpaces;
 
-    @Schema(description = "可用车位数")
-    private Integer availableSpaces;
-
     @Schema(description = "经度")
     private BigDecimal longitude;
 

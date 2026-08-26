@@ -20,4 +20,6 @@ public interface IFeeRuleService extends IService<FeeRule> {
     void updateFeeRule(FeeRuleFormDTO dto);
 
     void updateFeeRuleStatus(Long id, CommonStatus status);
+
+    FeeRule getEnableRuleByLotId(Long lotId);
 }
