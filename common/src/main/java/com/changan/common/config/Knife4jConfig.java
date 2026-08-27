@@ -62,7 +62,7 @@ public class Knife4jConfig {
     public GroupedOpenApi paymentAPI() {
         return GroupedOpenApi.builder()
                 .group("支付管理")
-                .pathsToMatch("/pay/**")
+                .pathsToMatch("/pay/**", "/payment/**", "/refund/**")
                 .build();
     }
 }
