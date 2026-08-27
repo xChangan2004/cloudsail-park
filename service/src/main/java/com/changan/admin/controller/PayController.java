@@ -1,9 +1,12 @@
 package com.changan.admin.controller;
 
 import com.changan.admin.service.IPayService;
+import com.changan.common.domain.R;
+import com.changan.model.dto.RefundFormDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -31,5 +34,12 @@ public class PayController {
         Map<String, String> params = new HashMap<>();
         request.getParameterMap().forEach((k, v) -> params.put(k, String.join(",", v)));
         return payService.handleNotify(params) ? "success" : "failure";
+    }
+
+    @PostMapping("/refund")
+    @Operation(summary = "退款（全部）")
+    public R<Void> refund(@RequestBody @Valid RefundFormDTO dto) {
+        payService.refund(dto);
+        return R.ok();
     }
 }
