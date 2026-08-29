@@ -9,6 +9,7 @@ import com.changan.model.vo.ParkingOrderDetailVO;
 import com.changan.model.vo.ParkingOrderPageVO;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface IParkingOrderService extends IService<ParkingOrder> {
 
@@ -19,4 +20,6 @@ public interface IParkingOrderService extends IService<ParkingOrder> {
     void closeOrder(Long id);
 
     ParkingOrderDetailVO queryOrderById(Long id);
+
+    List<ParkingOrder> listUnpaidByPlate(String plateNumber);
 }

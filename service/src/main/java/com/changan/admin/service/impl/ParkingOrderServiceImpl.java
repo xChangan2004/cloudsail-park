@@ -123,6 +123,14 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         return vo;
     }
 
+    @Override
+    public List<ParkingOrder> listUnpaidByPlate(String plateNumber) {
+        return lambdaQuery()
+                .eq(ParkingOrder::getPlateNumber, plateNumber)
+                .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
+                .list();
+    }
+
     /**
      * 批量查询停车场名称，转成 id -> name 映射
      */

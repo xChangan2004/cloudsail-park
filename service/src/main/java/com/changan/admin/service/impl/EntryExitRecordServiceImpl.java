@@ -90,15 +90,25 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (count > 0) {
             throw new BizIllegalException("该车辆已有入场记录，请勿重复申请入场");
         }
-        // 5.拷贝数据到实体
+        // 5.欠费拦截：存在未支付订单时不允许入场
+        List<ParkingOrder> unpaidOrders = parkingOrderService.listUnpaidByPlate(upperPlate);
+        if (CollUtil.isNotEmpty(unpaidOrders)) {
+            BigDecimal totalAmount = unpaidOrders.stream()
+                    .map(ParkingOrder::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            throw new BizIllegalException(StrUtil.format(
+                    "该车牌存在{}笔未支付订单，合计{}元，请先补缴后再入场",
+                    unpaidOrders.size(), totalAmount));
+        }
+        // 6.拷贝数据到实体
         EntryExitRecord record = BeanUtil.copyProperties(dto, EntryExitRecord.class);
         record.setCustomerId(customerId);
         record.setPlateNumber(upperPlate);
         record.setEntryType(EntryType.MANUAL);
         record.setStatus(EntryExitStatus.ENTERED);
-        // 6.保存数据
+        // 7.保存数据
         save(record);
-        // 7.更新车位状态
+        // 8.更新车位状态
         int rows = parkingSpaceMapper.update(new LambdaUpdateWrapper<ParkingSpace>()
                 .eq(ParkingSpace::getId, space.getId())
                 .eq(ParkingSpace::getStatus, space.getStatus())
@@ -106,7 +116,7 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (rows == 0) {
             throw new BizIllegalException("车位已被抢占或状态已变化，请重试");
         }
-        // 8.清除该场地余位缓存
+        // 9.清除该场地余位缓存
         parkingSpaceService.evictFreeCountCache(dto.getLotId());
     }
 
