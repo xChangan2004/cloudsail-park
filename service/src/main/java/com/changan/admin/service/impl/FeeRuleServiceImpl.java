@@ -105,14 +105,19 @@ public class FeeRuleServiceImpl extends ServiceImpl<FeeRuleMapper, FeeRule> impl
 
     @Override
     public void updateFeeRuleStatus(Long id, CommonStatus status) {
-        FeeRule rule = getById(id);
+        // 悲观锁，防止并发同时开启多条启用规则
+        FeeRule rule = lambdaQuery()
+                .eq(FeeRule::getId, id)
+                .last("FOR UPDATE")
+                .one();
         if (rule == null) {
             throw new BizIllegalException("计费规则不存在");
         }
         if (rule.getStatus() == status) {
             return; // 无效调整直接返回
         }
-        if (rule.getStatus() == CommonStatus.ENABLE) {
+        // 目标状态为启用，校验同停车场唯一启用规则
+        if (status == CommonStatus.ENABLE) {
             long count = lambdaQuery()
                     .eq(FeeRule::getLotId, rule.getLotId())
                     .eq(FeeRule::getStatus, CommonStatus.ENABLE)
