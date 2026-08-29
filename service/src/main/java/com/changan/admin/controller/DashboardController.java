@@ -1,6 +1,7 @@
 package com.changan.admin.controller;
 
 import com.changan.admin.service.IDashboardService;
+import com.changan.common.config.operlog.OperLog;
 import com.changan.common.domain.R;
 import com.changan.model.vo.DashboardCardsVO;
 import com.changan.model.vo.DashboardTrendVO;
@@ -26,6 +27,7 @@ public class DashboardController {
 
     @GetMapping("/cards")
     @Operation(summary = "获取看板卡片汇总指标")
+    @OperLog(type = "数据看板", subType = "获取看板卡片汇总指标")
     public R<DashboardCardsVO> queryCards(@RequestParam(required = false) Long lotId) {
         return R.ok(dashboardService.queryCards(lotId));
     }
