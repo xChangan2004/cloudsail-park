@@ -12,11 +12,11 @@
     </parent>
 
     <groupId>com.changan</groupId>
-    <artifactId>cloudsail-park-admin</artifactId>
+    <artifactId>cloudsail-park</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>CloudSail-Park-Admin</name>
+    <name>CloudSail-Park</name>
     <description>CloudSail Park is an intelligent parking management platform for commercial scenarios, featuring user and admin portals. It supports vehicle entry/exit, dynamic billing, online payment, monthly pass management, and data statistics, with simulated access flows and reserved IoT interfaces for future gate/camera integration.</description>
 
     <modules>

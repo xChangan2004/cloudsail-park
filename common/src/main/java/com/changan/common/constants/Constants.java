@@ -32,4 +32,18 @@ public interface Constants {
          */
         String DATE_FMT = "yyyy-MM-dd";
     }
+
+    interface Admin {
+        /**
+         * 账户体系类型
+         */
+        String TYPE = "admin";
+    }
+
+    interface App {
+        /**
+         * 账户体系类型
+         */
+        String TYPE = "app";
+    }
 }

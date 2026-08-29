@@ -1,7 +1,8 @@
 package com.changan.common.config;
 
 import cn.dev33.satoken.stp.StpInterface;
-import cn.dev33.satoken.stp.StpUtil;
+import com.changan.common.constants.Constants;
+import com.changan.common.utils.StpKit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 
@@ -18,8 +19,11 @@ public class SaPermissionConfig implements StpInterface {
 
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
+        if (!Constants.Admin.TYPE.equals(loginType)) {
+            return new ArrayList<>();
+        }
         try {
-            Object obj = StpUtil.getTokenSession().get(EXTRA_PERM_LIST);
+            Object obj = StpKit.ADMIN.getTokenSession().get(EXTRA_PERM_LIST);
             if (obj instanceof List) {
                 return new ArrayList<>((List<String>) obj);
             }
@@ -32,8 +36,11 @@ public class SaPermissionConfig implements StpInterface {
 
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
+        if (!Constants.Admin.TYPE.equals(loginType)) {
+            return new ArrayList<>();
+        }
         try {
-            Object obj = StpUtil.getTokenSession().get(EXTRA_ROLE_LIST);
+            Object obj = StpKit.ADMIN.getTokenSession().get(EXTRA_ROLE_LIST);
             if (obj instanceof List) {
                 return new ArrayList<>((List<String>) obj);
             }
