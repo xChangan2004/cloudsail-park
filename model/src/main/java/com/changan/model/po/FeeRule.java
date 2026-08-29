@@ -50,6 +50,10 @@ public class FeeRule extends BaseEntity implements Serializable {
     @Schema(description = "分时段费率配置")
     private List<TimeSegment> timeSegments;
 
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    @Schema(description = "阶梯费率配置")
+    private List<Tier> tiers;
+
     @Schema(description = "状态")
     private CommonStatus status;
 
@@ -60,6 +64,14 @@ public class FeeRule extends BaseEntity implements Serializable {
 
         @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "时间格式必须为HH:mm")
         private String end;
+
+        @DecimalMin(value = "0.0", message = "时段费率不能为负数")
+        private BigDecimal rate; // 该时段每小时费率
+    }
+
+    @Data
+    public static class Tier {
+        private Integer endMinutes; // 该阶梯结束的累计分钟数；最后一段必须为null，表示"之后无限"
 
         @DecimalMin(value = "0.0", message = "时段费率不能为负数")
         private BigDecimal rate; // 该时段每小时费率

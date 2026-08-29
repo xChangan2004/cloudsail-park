@@ -10,7 +10,7 @@ import lombok.Getter;
 public enum FeeRuleType implements BaseEnum {
     STANDARD(1, "标准"),
     PERIOD(2, "时段"),
-    ;
+    TIERED(3, "阶梯");
 
     @JsonValue
     @EnumValue

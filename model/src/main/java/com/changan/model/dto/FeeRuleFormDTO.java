@@ -51,4 +51,8 @@ public class FeeRuleFormDTO {
     @Valid
     @Schema(description = "分时段费率配置")
     private List<FeeRule.TimeSegment> timeSegments;
+
+    @Valid
+    @Schema(description = "阶梯费率配置")
+    private List<FeeRule.Tier> tiers;
 }
