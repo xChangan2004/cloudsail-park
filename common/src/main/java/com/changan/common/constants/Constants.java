@@ -1,5 +1,6 @@
 package com.changan.common.constants;
 
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 
 public interface Constants {
@@ -45,5 +46,37 @@ public interface Constants {
          * 账户体系类型
          */
         String TYPE = "app";
+        /**
+         * 验证码缓存key前缀
+         */
+        String CODE_KEY_PREFIX = "app:sms:code:";
+        /**
+         * 发送限频key前缀
+         */
+        String LIMIT_KEY_PREFIX = "app:sms:limit:";
+        /**
+         * 验证码有效期（分钟）
+         */
+        Duration CODE_TTL = Duration.ofMinutes(5);
+        /**
+         * 发送间隔限制（秒）
+         */
+        Duration SEND_INTERVAL = Duration.ofSeconds(60);
+        /**
+         * 验证码错误key前缀
+         */
+        String FAIL_COUNT_KEY_PREFIX = "app:sms:fail:count:";
+        /**
+         * 拉黑锁定key前缀
+         */
+        String FAIL_BLOCK_KEY_PREFIX = "app:sms:fail:block:";
+        /**
+         * 最大验证码错误次数
+         */
+        int MAX_FAIL_TIMES = 5;
+        /**
+         * 锁定时长
+         */
+        Duration BLOCK_MINUTES = Duration.ofMinutes(10);
     }
 }

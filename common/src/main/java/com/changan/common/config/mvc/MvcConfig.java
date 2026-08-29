@@ -24,7 +24,8 @@ public class MvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(new SaInterceptor(handler -> {
             // 用户端：校验app账号空间登录
             SaRouter.match("/app/**")
-                    .notMatch("/app/login")
+                    .notMatch("/app/auth/login")
+                    .notMatch("/app/auth/code")
                     .check(r -> StpKit.APP.checkLogin());
 
             // 管理端：除放行名单外，强制校验admin登录（注解校验不受影响，仍并行生效）

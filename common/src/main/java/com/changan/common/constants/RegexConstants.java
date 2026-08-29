@@ -19,4 +19,8 @@ public interface RegexConstants extends RegexPool {
      * 用户名正则。6~32位的字母、数字、下划线
      */
     String USERNAME_PATTERN = "^\\w{4,32}$";
+    /**
+     * 验证码正则。6位的数字
+     */
+    String CODE_PATTERN = "^\\d{6}$";
 }
