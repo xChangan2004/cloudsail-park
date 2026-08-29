@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.changan.admin.mapper.DashboardMapper">
+
+    <!--
+        今日收入
+    -->
+    <select id="selectTodayIncome" resultType="BigDecimal">
+        SELECT IFNULL(SUM(paid), 0) AS income
+        FROM parking_order
+        WHERE is_deleted = 0
+        AND status = 1
+        AND paid_time &gt;= #{begin}
+        AND paid_time &lt; #{end}
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+    </select>
+
+    <!--
+        总进出数
+    -->
+    <select id="selectTodayEntryExit" resultType="com.changan.model.vo.DashboardCardsVO">
+        SELECT
+        IFNULL(SUM(entry_time &gt;= #{begin}), 0) AS todayEntryCount,
+        IFNULL(SUM(exit_time &gt;= #{begin}), 0) AS todayExitCount
+        FROM entry_exit_record
+        WHERE is_deleted = 0
+        AND entry_time &lt; #{end}
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+    </select>
+
+    <!--
+        车位统计
+    -->
+    <select id="selectSpaceStat" resultType="com.changan.model.vo.DashboardCardsVO">
+        SELECT
+        COUNT(*) AS totalSpaces,
+        IFNULL(SUM(status = 2), 0) AS occupiedSpaces,
+        IFNULL(SUM(status = 1), 0) AS freeSpaces
+        FROM parking_space
+        WHERE is_deleted = 0
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+    </select>
+
+    <!--
+        按天聚合收入，只返回有数据的天
+    -->
+    <select id="selectIncomeTrend" resultType="com.changan.model.vo.DashboardTrendVO">
+        SELECT
+        DATE_FORMAT(paid_time, '%Y-%m-%d') as date,
+        IFNULL(SUM(paid), 0) as income
+        FROM parking_order
+        WHERE is_deleted = 0
+        AND status = 1
+        AND paid_time &gt;= #{begin}
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+        GROUP BY DATE_FORMAT(paid_time, '%Y-%m-%d')
+    </select>
+
+    <!--
+        按天聚合当天入场数，只返回有数据的天
+    -->
+    <select id="selectEntryTrend" resultType="com.changan.model.vo.DashboardTrendVO">
+        SELECT
+        DATE_FORMAT(entry_time, '%Y-%m-%d') AS date,
+        COUNT(*) AS entryCount
+        FROM entry_exit_record
+        WHERE is_deleted = 0
+        AND entry_time &gt;= #{begin}
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+        GROUP BY DATE_FORMAT(entry_time, '%Y-%m-%d')
+    </select>
+
+    <select id="selectExitTrend" resultType="com.changan.model.vo.DashboardTrendVO">
+        SELECT
+        DATE_FORMAT(exit_time, '%Y-%m-%d') AS date,
+        COUNT(*) AS exitCount
+        FROM entry_exit_record
+        WHERE is_deleted = 0
+        AND exit_time &gt;= #{begin}
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+        GROUP BY DATE_FORMAT(exit_time, '%Y-%m-%d')
+    </select>
+
+    <select id="selectOrderDistribution" resultType="com.changan.model.vo.OrderDistributionVO">
+        SELECT
+        status, COUNT(*) AS count
+        FROM parking_order
+        WHERE is_deleted = 0
+        <if test="lotId != null">
+            AND lot_id = #{lotId}
+        </if>
+        GROUP BY status
+    </select>
+
+    <select id="selectPayMethodStat" resultType="com.changan.model.vo.PayMethodStatVO$MethodItem">
+        SELECT
+        pay_method as method,
+        COUNT(*) as count,
+        IFNULL(SUM(pr.amount), 0) as amount
+        FROM payment_record pr
+        <if test="lotId != null">
+            JOIN parking_order po ON pr.order_id = po.id AND po.lot_id = #{lotId}
+        </if>
+        WHERE pr.is_deleted = 0
+        GROUP BY pay_method
+    </select>
+
+    <select id="selectTotalRefund" resultType="java.math.BigDecimal">
+        SELECT
+        IFNULL(SUM(rf.amount), 0)
+        FROM refund_record rf
+        <if test="lotId != null">
+            JOIN parking_order po ON rf.order_id = po.id AND po.lot_id = #{lotId}
+        </if>
+        WHERE rf.is_deleted = 0
+    </select>
+
+</mapper>

@@ -21,4 +21,15 @@ public interface Constants {
          */
         DateTimeFormatter ORDER_NO_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     }
+
+    interface Dashboard {
+        /**
+         * 数据看板缓存key
+         */
+        String DASHBOARD_KEY = "dashboard:";
+        /**
+         * 日期格式
+         */
+        String DATE_FMT = "yyyy-MM-dd";
+    }
 }
