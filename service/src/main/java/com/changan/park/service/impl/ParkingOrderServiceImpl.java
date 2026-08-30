@@ -5,22 +5,23 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.enums.CustomerCouponStatus;
+import com.changan.model.po.*;
 import com.changan.model.query.AppOrderQuery;
 import com.changan.model.vo.*;
 import com.changan.park.mapper.CustomerMapper;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.mapper.ParkingOrderMapper;
+import com.changan.park.service.ICustomerCouponService;
 import com.changan.park.service.IParkingOrderService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.OrderStatus;
 import com.changan.common.exceptions.BizIllegalException;
-import com.changan.model.po.Customer;
-import com.changan.model.po.EntryExitRecord;
-import com.changan.model.po.ParkingLot;
-import com.changan.model.po.ParkingOrder;
 import com.changan.model.query.ParkingOrderQuery;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 import static com.changan.common.constants.Constants.Order.ORDER_NO_FORMAT;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, ParkingOrder> implements IParkingOrderService {
@@ -40,6 +42,8 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
     private final ParkingLotMapper parkingLotMapper;
 
     private final CustomerMapper customerMapper;
+
+    private final ICustomerCouponService customerCouponService;
 
     @Override
     public ParkingOrder createExitOrder(EntryExitRecord record, BigDecimal amount) {
@@ -85,13 +89,14 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
     }
 
     @Override
+    @Transactional
     public void closeOrder(Long id) {
         // 1.查订单
         ParkingOrder order = getById(id);
         if (order == null) {
             throw new BizIllegalException("订单不存在");
         }
-        // 2.状态校验：只有待支付才可以关闭
+        // 2.只有待支付才可以关闭
         if (order.getStatus() != OrderStatus.UNPAID) {
             throw new BizIllegalException("只有待支付的订单才能关闭");
         }
@@ -100,9 +105,20 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
                 .eq(ParkingOrder::getId, id)
                 .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
                 .set(ParkingOrder::getStatus, OrderStatus.CLOSED)
+                .set(ParkingOrder::getDiscount, BigDecimal.ZERO) // 关单清优惠，重新展示为原价
                 .update();
         if (!updated) {
             throw new BizIllegalException("订单状态已变化，请刷新后重试");
+        }
+        // 4.归还优惠券
+        boolean released = customerCouponService.lambdaUpdate()
+                .eq(CustomerCoupon::getOrderId, id)
+                .eq(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)
+                .set(CustomerCoupon::getStatus, CustomerCouponStatus.UNUSED)
+                .set(CustomerCoupon::getOrderId, null)
+                .update();
+        if (!released) {
+            log.debug("订单{}关闭时无锁定优惠券", id);
         }
     }
 

@@ -9,18 +9,15 @@ import com.alipay.api.request.AlipayTradeWapPayRequest;
 import com.alipay.api.response.AlipayTradeRefundResponse;
 import com.changan.common.config.alipay.AlipayProperties;
 import com.changan.common.config.redisson.annotations.Lock;
+import com.changan.common.constants.Constants;
+import com.changan.common.enums.CustomerCouponStatus;
 import com.changan.common.enums.OrderStatus;
 import com.changan.common.enums.PayMethod;
 import com.changan.common.enums.RefundStatus;
 import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.dto.RefundFormDTO;
-import com.changan.model.po.ParkingOrder;
-import com.changan.model.po.PaymentRecord;
-import com.changan.model.po.RefundRecord;
-import com.changan.park.service.IParkingOrderService;
-import com.changan.park.service.IPayService;
-import com.changan.park.service.IPaymentRecordService;
-import com.changan.park.service.IRefundRecordService;
+import com.changan.model.po.*;
+import com.changan.park.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,8 +47,13 @@ public class PayServiceImpl implements IPayService {
 
     private final IRefundRecordService refundRecordService;
 
+    private final ICouponTemplateService couponTemplateService;
+
+    private final ICustomerCouponService customerCouponService;
+
     @Override
-    public String createMyPay(Long orderId, Long customerId) {
+    @Lock(name = Constants.Pay.CREATE_PAY_LOCK)
+    public String createMyPay(Long orderId, Long couponId, Long customerId) {
         // 1.查订单并校验归属
         ParkingOrder order = parkingOrderService.getById(orderId);
         if (order == null) {
@@ -64,25 +66,125 @@ public class PayServiceImpl implements IPayService {
         if (order.getStatus() != OrderStatus.UNPAID) {
             throw new BizIllegalException("当前订单状态不支持支付");
         }
-        // 3.发起H5支付
+        // 3.处理优惠券
+        BigDecimal discount = processCouponForPay(order, couponId);
+        // 4.计算实付（订单金额 - 优惠）= 实付
+        BigDecimal paidAmount = order.getAmount().subtract(discount);
+        // 5.发起H5支付
         AlipayTradeWapPayRequest request = new AlipayTradeWapPayRequest();
-        // 3.1.设置异步通知
+        // 5.1.设置异步通知
         request.setNotifyUrl(alipayProperties.getNotifyUrl());
-        // 3.2.设置同步回跳
+        // 5.2.设置同步回跳
         request.setReturnUrl(alipayProperties.getReturnUrl());
-        // 3.3.设置业务参数
+        // 5.3.设置业务参数
         JSONObject bizContent = new JSONObject();
         bizContent.put("out_trade_no", order.getOrderNo());
-        bizContent.put("total_amount", order.getAmount());
+        bizContent.put("total_amount", paidAmount);
         bizContent.put("subject", "停车费-" + order.getPlateNumber());
         bizContent.put("product_code", "QUICK_WAP_WAY");
         request.setBizContent(bizContent.toJSONString());
-        // 4.调用支付宝，返回支付表单HTML
+        // 6.调用支付宝，返回支付表单HTML
         try {
             return alipayClient.pageExecute(request).getBody();
         } catch (AlipayApiException e) {
             throw new BizIllegalException("创建支付失败：" + e.getMessage());
         }
+    }
+
+    /**
+     * 支付前处理优惠券：返回本单生效的优惠金额
+     * 三种分支：
+     * couponId=null  → 不用券：解锁历史锁定的券，discount清零
+     * couponId=当前已锁的券 → 重复选择同一张券：直接返回现有discount（幂等）
+     * couponId=新券 → 换券/首次选券：解锁旧券，锁定新券，discount=券面额
+     */
+    private BigDecimal processCouponForPay(ParkingOrder order, Long couponId) {
+        return transactionTemplate.execute(status -> {
+            // 1.查当前订单锁定的券
+            CustomerCoupon lockedCoupon = null;
+            if (order.getDiscount() != null && order.getDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                lockedCoupon = customerCouponService.lambdaQuery()
+                        .eq(CustomerCoupon::getOrderId, order.getId())
+                        .eq(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)
+                        .one();
+            }
+            // 2.不用券，解锁旧券，discount清0
+            if (couponId == null) {
+                if (lockedCoupon != null) {
+                    // 解锁券
+                    unlockCoupon(lockedCoupon.getId());
+                    // discount清0
+                    updateDiscount(order.getId(), BigDecimal.ZERO);
+                }
+                return BigDecimal.ZERO;
+            }
+            // 3.选了券，查券校验
+            CustomerCoupon coupon = customerCouponService.getById(couponId);
+            if (coupon == null || !coupon.getCustomerId().equals(order.getCustomerId())) {
+                throw new BizIllegalException("优惠券不存在");
+            }
+            if (coupon.getStatus() != CustomerCouponStatus.UNUSED) {
+                // 重复选同一张已锁定的券，直接复用
+                if (lockedCoupon != null && lockedCoupon.getId().equals(couponId)
+                        && coupon.getStatus() == CustomerCouponStatus.LOCKED) {
+                    return order.getDiscount();
+                }
+                throw new BizIllegalException("该优惠券不可用");
+            }
+            // 4.查模板，校验门槛与有效期
+            if (coupon.getExpireTime().isBefore(LocalDateTime.now())) {
+                throw new BizIllegalException("该券已过期");
+            }
+            CouponTemplate template = couponTemplateService.getById(coupon.getTemplateId());
+            if (template == null) {
+                throw new BizIllegalException("该优惠券不可用");
+            }
+            if (order.getAmount().compareTo(template.getThreshold()) < 0) {
+                throw new BizIllegalException("订单金额未达优惠券使用门槛");
+            }
+            // 5.换券
+            if (lockedCoupon != null && !lockedCoupon.getId().equals(couponId)) {
+                // 先解锁旧券
+                unlockCoupon(lockedCoupon.getId());
+            }
+            // 6.锁定新券
+            boolean locked = customerCouponService.lambdaUpdate()
+                    .eq(CustomerCoupon::getId, couponId)
+                    .eq(CustomerCoupon::getStatus, CustomerCouponStatus.UNUSED)
+                    .apply("expire_time > now()")
+                    .set(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)
+                    .set(CustomerCoupon::getOrderId, order.getId())
+                    .update();
+            if (!locked) {
+                throw new BizIllegalException("优惠券已被使用或已过期");
+            }
+            // 7.更新订单discount字段
+            updateDiscount(order.getId(), template.getAmount());
+            return template.getAmount();
+        });
+    }
+
+    /**
+     * 解锁优惠券
+     */
+    private void unlockCoupon(Long couponId) {
+        customerCouponService.lambdaUpdate()
+                .eq(CustomerCoupon::getId, couponId)
+                .eq(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)
+                .set(CustomerCoupon::getStatus, CustomerCouponStatus.UNUSED)
+                .set(CustomerCoupon::getOrderId, null)
+                .update();
+    }
+
+    /**
+     * 更新订单优惠金额
+     */
+    private void updateDiscount(Long orderId, BigDecimal discount) {
+        parkingOrderService.lambdaUpdate()
+                .eq(ParkingOrder::getId, orderId)
+                .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
+                .set(ParkingOrder::getDiscount, discount)
+                .update();
     }
 
     @Override
@@ -114,7 +216,7 @@ public class PayServiceImpl implements IPayService {
     }
 
     @Override
-    @Lock(name = "refund:#{dto.orderNo}")
+    @Lock(name = Constants.Pay.REFUND_LOCK)
     public void refund(RefundFormDTO dto) {
         // 1.查订单
         ParkingOrder order = parkingOrderService.lambdaQuery()
@@ -201,8 +303,10 @@ public class PayServiceImpl implements IPayService {
         if (order == null) {
             throw new BizIllegalException("回调订单不存在：" + orderNo);
         }
-        // 5.核对金额（防止篡改，通知金额必须与订单一致）
-        if (order.getAmount().compareTo(payAmount) != 0) {
+        // 5.核对金额（防止篡改，通知金额必须等于实付=amount-discount）
+        BigDecimal expected = order.getAmount().subtract(
+                order.getDiscount() == null ? BigDecimal.ZERO : order.getDiscount());
+        if (expected.compareTo(payAmount) != 0) {
             throw new BizIllegalException("支付金额与订单不符，订单号：" + orderNo);
         }
         // 6.更新订单状态
@@ -217,7 +321,16 @@ public class PayServiceImpl implements IPayService {
             // 重复通知（订单已是PAID）或订单已关闭：不写流水，直接当成功
             return;
         }
-        // 7.写支付流水
+        // 7.核销优惠券
+        boolean couponUsed = customerCouponService.lambdaUpdate()
+                .eq(CustomerCoupon::getOrderId, order.getId())
+                .eq(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)
+                .set(CustomerCoupon::getStatus, CustomerCouponStatus.USED)
+                .update();
+        if (!couponUsed) {
+            log.error("支付成功但优惠券核销失败，orderId={}, 需人工核查", order.getId());
+        }
+        // 8.写支付流水
         PaymentRecord record = new PaymentRecord();
         record.setOrderId(order.getId());
         record.setTransactionId(tradeNo);

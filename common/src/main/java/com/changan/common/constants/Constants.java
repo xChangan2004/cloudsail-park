@@ -93,4 +93,15 @@ public interface Constants {
          */
         String COUPON_RECEIVE_LOCK_KEY = "coupon:receive:#{customerId}:#{templateId}";
     }
+
+    interface Pay {
+        /**
+         * 创建支付锁key
+         */
+        String CREATE_PAY_LOCK = "pay:create:#{orderId}";
+        /**
+         * 退款锁key
+         */
+        String REFUND_LOCK =  "pay:refund:#{dto.orderNo}";
+    }
 }
