@@ -6,6 +6,7 @@ import com.changan.common.utils.StpKit;
 import com.changan.model.query.AppOrderQuery;
 import com.changan.model.vo.AppOrderDetailVO;
 import com.changan.model.vo.AppOrderVO;
+import com.changan.model.vo.AppUnpaidCountVO;
 import com.changan.model.vo.ParkingOrderDetailVO;
 import com.changan.park.service.IParkingOrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,5 +37,12 @@ public class AppOrderController {
     public R<AppOrderDetailVO> myOrderDetail(@PathVariable Long id) {
         Long customerId = StpKit.APP.getLoginIdAsLong();
         return R.ok(parkingOrderService.queryMyOrderDetail(id, customerId));
+    }
+
+    @GetMapping("/unpaid-count")
+    @Operation(summary = "我的待支付订单数（角标+欠费提醒）")
+    public R<AppUnpaidCountVO> unpaidCount() {
+        Long customerId = StpKit.APP.getLoginIdAsLong();
+        return R.ok(parkingOrderService.queryMyUnpaidCount(customerId));
     }
 }

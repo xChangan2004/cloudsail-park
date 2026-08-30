@@ -6,10 +6,7 @@ import com.changan.model.po.EntryExitRecord;
 import com.changan.model.po.ParkingOrder;
 import com.changan.model.query.AppOrderQuery;
 import com.changan.model.query.ParkingOrderQuery;
-import com.changan.model.vo.AppOrderDetailVO;
-import com.changan.model.vo.AppOrderVO;
-import com.changan.model.vo.ParkingOrderDetailVO;
-import com.changan.model.vo.ParkingOrderPageVO;
+import com.changan.model.vo.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -29,4 +26,6 @@ public interface IParkingOrderService extends IService<ParkingOrder> {
     PageDTO<AppOrderVO> queryMyOrderPage(AppOrderQuery query, Long customerId);
 
     AppOrderDetailVO queryMyOrderDetail(Long id, Long customerId);
+
+    AppUnpaidCountVO queryMyUnpaidCount(Long customerId);
 }

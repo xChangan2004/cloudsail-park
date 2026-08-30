@@ -6,8 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.model.query.AppOrderQuery;
-import com.changan.model.vo.AppOrderDetailVO;
-import com.changan.model.vo.AppOrderVO;
+import com.changan.model.vo.*;
 import com.changan.park.mapper.CustomerMapper;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.mapper.ParkingOrderMapper;
@@ -20,8 +19,6 @@ import com.changan.model.po.EntryExitRecord;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.po.ParkingOrder;
 import com.changan.model.query.ParkingOrderQuery;
-import com.changan.model.vo.ParkingOrderDetailVO;
-import com.changan.model.vo.ParkingOrderPageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -170,6 +167,22 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         Map<Long, String> lotNames = translateLotNames(List.of(order));
         AppOrderDetailVO vo = BeanUtil.copyProperties(order, AppOrderDetailVO.class);
         vo.setLotName(lotNames.get(order.getLotId()));
+        return vo;
+    }
+
+    @Override
+    public AppUnpaidCountVO queryMyUnpaidCount(Long customerId) {
+        // 一次查询同时拿笔数和总额（列表查询，条数有限不需要SUM聚合SQL）
+        List<ParkingOrder> unpaid = lambdaQuery()
+                .eq(ParkingOrder::getCustomerId, customerId)
+                .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
+                .select(ParkingOrder::getAmount)
+                .list();
+        AppUnpaidCountVO vo = new AppUnpaidCountVO();
+        vo.setCount((long) unpaid.size());
+        vo.setTotalAmount(unpaid.stream()
+                .map(ParkingOrder::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
         return vo;
     }
 
