@@ -25,9 +25,11 @@ public interface ICustomerService extends IService<Customer> {
 
     void bindPlate(CustomerPlate plate);
 
-    void unBindPlate(Long id);
+    void unBindPlate(Long id, Boolean isAdmin);
 
     List<CustomerPlate> queryCustomerPlateListByCustomerId(Long customerId);
 
     PageDTO<CustomerPlate> queryCustomerPlatePage(PlateQuery query);
+
+    CustomerPlate queryCustomerPlateById(Long id);
 }

@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.utils.StpKit;
 import com.changan.park.mapper.CustomerMapper;
 import com.changan.park.service.ICustomerPlateService;
 import com.changan.park.service.ICustomerService;
@@ -136,11 +137,17 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
     @Override
     @Transactional
-    public void unBindPlate(Long id) {
+    public void unBindPlate(Long id, Boolean isAdmin) {
         // 1.查询车牌信息
         CustomerPlate plate = customerPlateService.getById(id);
         if (plate == null) {
             throw new BizIllegalException("车牌记录不存在");
+        }
+        if (!isAdmin) {
+            // 1.1.用户进行解绑，查看是否是当前用户的
+            if (plate.getCustomerId() != StpKit.APP.getLoginIdAsLong()) {
+                throw new BizIllegalException("无法解绑不属于您的车牌");
+            }
         }
         // 2.提前查出该客户的其余车牌（删除前查，逻辑更清晰）
         List<CustomerPlate> others = customerPlateService.lambdaQuery()
@@ -176,6 +183,11 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
                 .eq(query.getEnergyType() != null, CustomerPlate::getEnergyType, query.getEnergyType())
                 .page(query.toMpPageDefaultSortByCreateTimeDesc());
         return PageDTO.of(page);
+    }
+
+    @Override
+    public CustomerPlate queryCustomerPlateById(Long id) {
+        return customerPlateService.getById(id);
     }
 
     /**

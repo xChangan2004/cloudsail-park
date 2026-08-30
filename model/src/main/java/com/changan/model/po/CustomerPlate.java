@@ -16,7 +16,6 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "客户车牌实体")
 public class CustomerPlate extends BaseEntity {
 
-    @NotNull(message = "客户ID不能为空")
     @Schema(description = "客户ID")
     private Long customerId;
 

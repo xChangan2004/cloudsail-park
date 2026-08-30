@@ -72,7 +72,7 @@ public class CustomerController {
     @DeleteMapping("/plate/{id}")
     @Operation(summary = "取消车牌绑定")
     public R<Void> unBindPlate(@PathVariable @NotNull(message = "车牌ID不能为空") Long id) {
-        customerService.unBindPlate(id);
+        customerService.unBindPlate(id, true);
         return R.ok();
     }
 
