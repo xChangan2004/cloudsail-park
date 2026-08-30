@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.constants.Constants;
 import com.changan.model.vo.AppParkingLotVO;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.service.IParkingLotService;
@@ -17,6 +18,9 @@ import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
 import com.changan.park.service.IParkingSpaceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.geo.Point;
+import org.springframework.data.redis.connection.RedisGeoCommands;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -27,6 +31,8 @@ import java.util.List;
 public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, ParkingLot> implements IParkingLotService {
 
     private final IParkingSpaceService parkingSpaceService;
+
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public void saveParkingLot(ParkingLotFormDTO dto) {
@@ -41,6 +47,8 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         ParkingLot parkingLot = BeanUtil.copyProperties(dto, ParkingLot.class);
         // 3.保存停车场信息
         save(parkingLot);
+        // 4.将停车场位置同步进Redis GEO中
+        syncGeo(parkingLot);
     }
 
     @Override
@@ -91,6 +99,9 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         BeanUtil.copyProperties(dto, parkingLot);
         // 4.更新停车场信息
         updateById(parkingLot);
+        // 5.更新停车场GEO信息
+        redisTemplate.opsForGeo().remove(Constants.Lot.LOT_GEO_KEY, id.toString());
+        syncGeo(parkingLot);
     }
 
     @Override
@@ -106,6 +117,8 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         }
         // 3.删除停车场
         removeById(id);
+        // 4.删除GEO索引
+        redisTemplate.opsForGeo().remove(Constants.Lot.LOT_GEO_KEY, id.toString());
     }
 
     @Override
@@ -143,5 +156,15 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
             vo.setHasFree(free > 0);
             return vo;
         }).toList();
+    }
+
+    private void syncGeo(ParkingLot lot) {
+        if (lot.getLongitude() == null || lot.getLatitude() == null) {
+            return;
+        }
+        redisTemplate.opsForGeo()
+                .add(Constants.Lot.LOT_GEO_KEY,
+                        new RedisGeoCommands.GeoLocation<>(lot.getId().toString(),
+                                new Point(lot.getLongitude().doubleValue(), lot.getLatitude().doubleValue())));
     }
 }

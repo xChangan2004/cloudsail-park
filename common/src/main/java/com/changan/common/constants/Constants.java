@@ -5,6 +5,13 @@ import java.time.format.DateTimeFormatter;
 
 public interface Constants {
 
+    interface Lot {
+        /**
+         * 停车场GEO索引key
+         */
+        String LOT_GEO_KEY = "parking:lot:geo:";
+    }
+
     interface Spaces {
         /**
          * 余位缓存key
