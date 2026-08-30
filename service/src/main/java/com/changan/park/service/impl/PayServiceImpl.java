@@ -4,13 +4,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.internal.util.AlipaySignature;
-import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.request.AlipayTradeWapPayRequest;
 import com.alipay.api.response.AlipayTradeRefundResponse;
-import com.changan.park.service.IParkingOrderService;
-import com.changan.park.service.IPayService;
-import com.changan.park.service.IPaymentRecordService;
-import com.changan.park.service.IRefundRecordService;
 import com.changan.common.config.alipay.AlipayProperties;
 import com.changan.common.config.redisson.annotations.Lock;
 import com.changan.common.enums.OrderStatus;
@@ -21,10 +17,13 @@ import com.changan.model.dto.RefundFormDTO;
 import com.changan.model.po.ParkingOrder;
 import com.changan.model.po.PaymentRecord;
 import com.changan.model.po.RefundRecord;
+import com.changan.park.service.IParkingOrderService;
+import com.changan.park.service.IPayService;
+import com.changan.park.service.IPaymentRecordService;
+import com.changan.park.service.IRefundRecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -52,32 +51,33 @@ public class PayServiceImpl implements IPayService {
     private final IRefundRecordService refundRecordService;
 
     @Override
-    public String createPay(String orderNo) {
-        // 1.查订单（按订单号精准查询）
-        ParkingOrder order = parkingOrderService.lambdaQuery()
-                .eq(ParkingOrder::getOrderNo, orderNo)
-                .one();
+    public String createMyPay(Long orderId, Long customerId) {
+        // 1.查订单并校验归属
+        ParkingOrder order = parkingOrderService.getById(orderId);
         if (order == null) {
             throw new BizIllegalException("订单不存在");
         }
-        // 2.状态校验：只有待支付才能发起
+        if (!order.getCustomerId().equals(customerId)) {
+            throw new BizIllegalException("该订单不属于您");
+        }
+        // 2.状态校验
         if (order.getStatus() != OrderStatus.UNPAID) {
             throw new BizIllegalException("当前订单状态不支持支付");
         }
-        // 3.组装请求参数
-        AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
-        // 异步通知：资金事实唯一来源
+        // 3.发起H5支付
+        AlipayTradeWapPayRequest request = new AlipayTradeWapPayRequest();
+        // 3.1.设置异步通知
         request.setNotifyUrl(alipayProperties.getNotifyUrl());
-        // 同步回跳
+        // 3.2.设置同步回跳
         request.setReturnUrl(alipayProperties.getReturnUrl());
-        // 4.业务参数
+        // 3.3.设置业务参数
         JSONObject bizContent = new JSONObject();
-        bizContent.put("out_trade_no", order.getOrderNo()); // 商户订单号
-        bizContent.put("total_amount", order.getAmount()); // 金额
-        bizContent.put("subject", "停车费-" + order.getPlateNumber()); // 主题
-        bizContent.put("product_code", "FAST_INSTANT_TRADE_PAY"); // 页面支付固定值
+        bizContent.put("out_trade_no", order.getOrderNo());
+        bizContent.put("total_amount", order.getAmount());
+        bizContent.put("subject", "停车费-" + order.getPlateNumber());
+        bizContent.put("product_code", "QUICK_WAP_WAY");
         request.setBizContent(bizContent.toJSONString());
-        // 5.调用支付宝，返回支付表单HTML
+        // 4.调用支付宝，返回支付表单HTML
         try {
             return alipayClient.pageExecute(request).getBody();
         } catch (AlipayApiException e) {

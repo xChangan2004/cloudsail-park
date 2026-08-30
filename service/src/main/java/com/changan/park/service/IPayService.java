@@ -6,7 +6,7 @@ import java.util.Map;
 
 public interface IPayService {
 
-    String createPay(String orderNo);
+    String createMyPay(Long orderId, Long customerId);
 
     boolean handleNotify(Map<String, String> params);
 
