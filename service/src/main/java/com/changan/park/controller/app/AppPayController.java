@@ -15,7 +15,7 @@ public class AppPayController {
 
     private final IPayService payService;
 
-    @GetMapping(value = "/{orderId}", produces = "text/html")
+    @GetMapping(value = "/{orderId}")
     @Operation(summary = "发起H5支付")
     public String createPay(@PathVariable Long orderId,
                             @RequestParam(required = false) Long couponId) {
