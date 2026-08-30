@@ -6,13 +6,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("coupon_template")
 @Schema(description = "优惠券模板实体类")
-public class CouponTemplate extends BaseEntity {
+public class CouponTemplate extends BaseEntity implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "券名称")
     private String name;

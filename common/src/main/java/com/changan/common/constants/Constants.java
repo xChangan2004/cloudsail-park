@@ -86,4 +86,11 @@ public interface Constants {
          */
         Duration BLOCK_MINUTES = Duration.ofMinutes(10);
     }
+
+    interface Coupon {
+        /**
+         * 领取优惠券锁key
+         */
+        String COUPON_RECEIVE_LOCK_KEY = "coupon:receive:#{customerId}:#{templateId}";
+    }
 }
