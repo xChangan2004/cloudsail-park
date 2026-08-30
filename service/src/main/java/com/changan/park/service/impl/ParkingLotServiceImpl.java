@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.model.vo.AppParkingLotVO;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.service.IParkingLotService;
 import com.changan.common.domain.dto.PageDTO;
@@ -14,12 +15,18 @@ import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.dto.ParkingLotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
+import com.changan.park.service.IParkingSpaceService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, ParkingLot> implements IParkingLotService {
+
+    private final IParkingSpaceService parkingSpaceService;
 
     @Override
     public void saveParkingLot(ParkingLotFormDTO dto) {
@@ -117,5 +124,24 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         parkingLot.setId(id);
         parkingLot.setStatus(status);
         updateById(parkingLot);
+    }
+
+    @Override
+    public List<AppParkingLotVO> listEnabledWithFreeCount() {
+        // 1.查询启用中的停车场
+        List<ParkingLot> lots = lambdaQuery()
+                .eq(ParkingLot::getStatus, CommonStatus.ENABLE)
+                .list();
+        if (CollUtil.isEmpty(lots)) {
+            return Collections.emptyList();
+        }
+        // 2.组装VO
+        return lots.stream().map(lot -> {
+            AppParkingLotVO vo = BeanUtil.copyProperties(lot, AppParkingLotVO.class);
+            long free = parkingSpaceService.countFreeSpaces(lot.getId());
+            vo.setFreeSpaces(free);
+            vo.setHasFree(free > 0);
+            return vo;
+        }).toList();
     }
 }

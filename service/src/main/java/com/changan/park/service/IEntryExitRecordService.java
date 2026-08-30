@@ -8,6 +8,7 @@ import com.changan.model.po.EntryExitRecord;
 import com.changan.model.query.EntryExitRecordQuery;
 import com.changan.model.vo.EntryExitRecordPageVO;
 import com.changan.model.vo.ExitBillVO;
+import com.changan.model.vo.MyParkingStatusVO;
 
 public interface IEntryExitRecordService extends IService<EntryExitRecord> {
 
@@ -16,4 +17,6 @@ public interface IEntryExitRecordService extends IService<EntryExitRecord> {
     PageDTO<EntryExitRecordPageVO> queryRecordPage(EntryExitRecordQuery query);
 
     ExitBillVO exit(ExitFormDTO dto);
+
+    MyParkingStatusVO queryMyParkingStatus();
 }

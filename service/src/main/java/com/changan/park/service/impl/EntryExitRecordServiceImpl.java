@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.utils.StpKit;
+import com.changan.model.vo.MyParkingStatusVO;
 import com.changan.park.mapper.*;
 import com.changan.park.service.IEntryExitRecordService;
 import com.changan.park.service.IFeeRuleService;
@@ -209,6 +211,36 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         vo.setRuleDesc(strategy.getRuleDesc(rule));
         vo.setAmount(amount);
         vo.setOrderNo(order.getOrderNo());
+        return vo;
+    }
+
+    @Override
+    public MyParkingStatusVO queryMyParkingStatus() {
+        // 1.查询该用户当前在场的最新记录
+        long customerId = StpKit.APP.getLoginIdAsLong();
+        EntryExitRecord record = lambdaQuery()
+                .eq(EntryExitRecord::getCustomerId, customerId)
+                .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
+                .orderByDesc(EntryExitRecord::getEntryTime)
+                .last("LIMIT 1")
+                .one();
+        // 2.不在场，返回parking=false的空状态
+        MyParkingStatusVO vo = new MyParkingStatusVO();
+        if (record == null) {
+            vo.setParking(false);
+            return vo;
+        }
+        // 3.组装VO
+        vo.setParking(true);
+        vo.setRecordId(record.getId());
+        vo.setPlateNumber(record.getPlateNumber());
+        vo.setEntryTime(record.getEntryTime());
+        vo.setParkedMinutes(Duration.between(record.getEntryTime(), LocalDateTime.now()).toMinutes());
+        // 补充停车场名称
+        ParkingLot lot = parkingLotMapper.selectById(record.getLotId());
+        if (lot != null) {
+            vo.setLotName(lot.getName());
+        }
         return vo;
     }
 

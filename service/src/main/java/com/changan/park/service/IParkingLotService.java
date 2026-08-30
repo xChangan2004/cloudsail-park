@@ -6,6 +6,9 @@ import com.changan.common.enums.CommonStatus;
 import com.changan.model.dto.ParkingLotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
+import com.changan.model.vo.AppParkingLotVO;
+
+import java.util.List;
 
 public interface IParkingLotService extends IService<ParkingLot> {
 
@@ -20,4 +23,6 @@ public interface IParkingLotService extends IService<ParkingLot> {
     void deleteParkingLotById(Long id);
 
     void updateParkingLotStatus(Long id, CommonStatus status);
+
+    List<AppParkingLotVO> listEnabledWithFreeCount();
 }
