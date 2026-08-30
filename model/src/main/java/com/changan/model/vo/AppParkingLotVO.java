@@ -40,4 +40,7 @@ public class AppParkingLotVO implements Serializable {
 
     @Schema(description = "是否有空位")
     private Boolean hasFree;
+
+    @Schema(description = "距离（米），未传定位或该场无坐标时为null")
+    private Long distance;
 }

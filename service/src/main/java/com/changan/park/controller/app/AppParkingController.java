@@ -1,7 +1,9 @@
 package com.changan.park.controller.app;
 
 import com.changan.common.domain.R;
+import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.utils.StpKit;
+import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.vo.AppParkingLotVO;
 import com.changan.model.vo.MyParkingStatusVO;
 import com.changan.park.service.IEntryExitRecordService;
@@ -26,9 +28,9 @@ public class AppParkingController {
     private final IEntryExitRecordService entryExitRecordService;
 
     @GetMapping("/lots")
-    @Operation(summary = "停车场列表（含实时余位）")
-    public R<List<AppParkingLotVO>> listLots() {
-        return R.ok(parkingLotService.listEnabledWithFreeCount());
+    @Operation(summary = "停车场分页列表（含实时余位，传定位按距离排序）")
+    public R<PageDTO<AppParkingLotVO>> pageLots(AppParkingLotQuery query) {
+        return R.ok(parkingLotService.pageEnabledWithFreeCount(query));
     }
 
     @GetMapping("/status")

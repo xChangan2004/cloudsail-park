@@ -7,6 +7,7 @@ import com.changan.model.po.ParkingSpace;
 import com.changan.model.query.ParkingSpaceQuery;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IParkingSpaceService extends IService<ParkingSpace> {
 
