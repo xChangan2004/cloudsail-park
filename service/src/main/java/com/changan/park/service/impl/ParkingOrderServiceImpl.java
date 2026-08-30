@@ -5,6 +5,9 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.model.query.AppOrderQuery;
+import com.changan.model.vo.AppOrderDetailVO;
+import com.changan.model.vo.AppOrderVO;
 import com.changan.park.mapper.CustomerMapper;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.mapper.ParkingOrderMapper;
@@ -129,6 +132,45 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
                 .eq(ParkingOrder::getPlateNumber, plateNumber)
                 .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
                 .list();
+    }
+
+    @Override
+    public PageDTO<AppOrderVO> queryMyOrderPage(AppOrderQuery query, Long customerId) {
+        // 1.分页查询当前用户的订单
+        Page<ParkingOrder> page = lambdaQuery()
+                .eq(ParkingOrder::getCustomerId, customerId)
+                .eq(query.getStatus() != null, ParkingOrder::getStatus, query.getStatus())
+                .page(query.toMpPageDefaultSortByCreateTimeDesc());
+        List<ParkingOrder> records = page.getRecords();
+        if (CollUtil.isEmpty(records)) {
+            return PageDTO.empty(page);
+        }
+        // 2.批量翻译停车场名称
+        Map<Long, String> lotNames = translateLotNames(records);
+        // 3.组装VO
+        return PageDTO.of(page, order -> {
+            AppOrderVO vo = BeanUtil.copyProperties(order, AppOrderVO.class);
+            vo.setLotName(lotNames.get(order.getLotId()));
+            return vo;
+        });
+    }
+
+    @Override
+    public AppOrderDetailVO queryMyOrderDetail(Long id, Long customerId) {
+        // 1.查订单
+        ParkingOrder order = getById(id);
+        if (order == null) {
+            throw new BizIllegalException("订单不存在");
+        }
+        // 2.归属校验：不是自己的订单一律返回“不存在”
+        if (!order.getCustomerId().equals(customerId)) {
+            throw new BizIllegalException("订单不存在");
+        }
+        // 3.组装VO
+        Map<Long, String> lotNames = translateLotNames(List.of(order));
+        AppOrderDetailVO vo = BeanUtil.copyProperties(order, AppOrderDetailVO.class);
+        vo.setLotName(lotNames.get(order.getLotId()));
+        return vo;
     }
 
     /**

@@ -4,7 +4,10 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.model.po.EntryExitRecord;
 import com.changan.model.po.ParkingOrder;
+import com.changan.model.query.AppOrderQuery;
 import com.changan.model.query.ParkingOrderQuery;
+import com.changan.model.vo.AppOrderDetailVO;
+import com.changan.model.vo.AppOrderVO;
 import com.changan.model.vo.ParkingOrderDetailVO;
 import com.changan.model.vo.ParkingOrderPageVO;
 
@@ -22,4 +25,8 @@ public interface IParkingOrderService extends IService<ParkingOrder> {
     ParkingOrderDetailVO queryOrderById(Long id);
 
     List<ParkingOrder> listUnpaidByPlate(String plateNumber);
+
+    PageDTO<AppOrderVO> queryMyOrderPage(AppOrderQuery query, Long customerId);
+
+    AppOrderDetailVO queryMyOrderDetail(Long id, Long customerId);
 }
