@@ -1,5 +1,8 @@
 package com.changan.park.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.config.operlog.OperLog;
+import com.changan.common.constants.Constants;
 import com.changan.park.service.IFeeRuleService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -24,6 +27,8 @@ public class FeeRuleController {
 
     @PostMapping
     @Operation(summary = "新增计费规则")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:add")
+    @OperLog(type = "计费规则", subType = "新增计费规则")
     public R<Void> saveFeeRule(@RequestBody @Valid FeeRuleFormDTO dto) {
         feeRuleService.saveFeeRule(dto);
         return R.ok();
@@ -31,6 +36,8 @@ public class FeeRuleController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除计费规则")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:delete")
+    @OperLog(type = "计费规则", subType = "删除计费规则")
     public R<Void> deleteFeeRuleById(@PathVariable Long id) {
         feeRuleService.deleteFeeRuleById(id);
         return R.ok();
@@ -38,18 +45,22 @@ public class FeeRuleController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询计费规则")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:list")
     public R<PageDTO<FeeRule>> queryFeeRulePage(FeeRuleQuery query) {
         return R.ok(feeRuleService.queryFeeRulePage(query));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "查询计费详情")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:list")
     public R<FeeRule> queryFeeRuleById(@PathVariable Long id) {
         return R.ok(feeRuleService.queryFeeRuleById(id));
     }
 
     @PutMapping
     @Operation(summary = "修改计费规则")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:edit")
+    @OperLog(type = "计费规则", subType = "修改计费规则")
     public R<Void> updateFeeRule(@RequestBody @Valid FeeRuleFormDTO dto) {
         feeRuleService.updateFeeRule(dto);
         return R.ok();
@@ -57,6 +68,8 @@ public class FeeRuleController {
 
     @PutMapping("/{id}")
     @Operation(summary = "切换计费规则状态")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:edit")
+    @OperLog(type = "计费规则", subType = "切换计费规则状态")
     public R<Void> updateFeeRuleStatus(
             @PathVariable @NotNull(message = "规则ID不能为空") Long id,
             @RequestParam @NotNull(message = "状态不能为空") CommonStatus status

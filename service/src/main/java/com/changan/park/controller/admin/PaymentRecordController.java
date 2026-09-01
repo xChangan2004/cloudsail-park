@@ -1,5 +1,7 @@
 package com.changan.park.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.constants.Constants;
 import com.changan.park.service.IPaymentRecordService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -22,6 +24,7 @@ public class PaymentRecordController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询支付记录")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "pay:payment:list")
     public R<PageDTO<PaymentRecordVO>> queryPaymentRecordPage(PaymentRecordQuery query) {
         return R.ok(paymentRecordService.queryPaymentRecordPage(query));
     }

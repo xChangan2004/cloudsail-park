@@ -1,5 +1,7 @@
 package com.changan.park.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.constants.Constants;
 import com.changan.park.service.IRefundRecordService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -22,6 +24,7 @@ public class RefundRecordController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询退款记录")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "pay:refund-record:list")
     public R<PageDTO<RefundRecordVO>> queryRefundRecordPage(RefundRecordQuery query) {
         return R.ok(refundRecordService.queryRefundRecordPage(query));
     }

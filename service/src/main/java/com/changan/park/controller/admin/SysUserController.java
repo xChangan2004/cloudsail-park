@@ -1,6 +1,7 @@
 package com.changan.park.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.config.operlog.OperLog;
 import com.changan.common.constants.Constants;
 import com.changan.park.service.ISysUserService;
 import com.changan.common.domain.R;
@@ -36,6 +37,8 @@ public class SysUserController {
 
     @PostMapping
     @Operation(summary = "新增用户")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:add")
+    @OperLog(type = "系统用户", subType = "新增用户")
     public R<Void> saveUser(@Valid @RequestBody UserFormDTO dto) {
         userService.saveUser(dto);
         return R.ok();
@@ -43,21 +46,22 @@ public class SysUserController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询用户列表")
-//    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:page")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:list")
     public R<PageDTO<UserPageVO>> queryUserPage(SysUserQuery query) {
         return R.ok(userService.queryUserPage(query));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "根据ID查询用户详情")
-//    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:list")
     public R<UserDetailVO> queryUserById(@PathVariable @NotNull(message = "用户id不能为空") Long id) {
         return R.ok(userService.queryUserById(id));
     }
 
     @PutMapping("/{id}/status")
     @Operation(summary = "切换用户状态")
-//    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @OperLog(type = "系统用户", subType = "切换用户状态")
     public R<Void> updateUserStatus(
             @PathVariable @NotNull(message = "用户id不能为空") Long id,
             @RequestParam @NotNull(message = "状态不能为空") CommonStatus status) {
@@ -67,7 +71,8 @@ public class SysUserController {
 
     @PutMapping("/resetPwd")
     @Operation(summary = "重置密码")
-//    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @OperLog(type = "系统用户", subType = "重置密码")
     public R<Void> resetPwd(@Valid @RequestBody UserResetPwdDTO dto) {
         userService.resetPwd(dto);
         return R.ok();
@@ -75,7 +80,8 @@ public class SysUserController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除用户")
-//    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:delete")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:delete")
+    @OperLog(type = "系统用户", subType = "删除用户")
     public R<Void> deleteUserById(@PathVariable Long id) {
         userService.deleteUserById(id);
         return R.ok();
@@ -83,7 +89,8 @@ public class SysUserController {
 
     @PutMapping
     @Operation(summary = "修改用户")
-//    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
+    @OperLog(type = "系统用户", subType = "修改用户")
     public R<Void> updateUser(@Valid @RequestBody UserFormDTO dto) {
         userService.updateUser(dto);
         return R.ok();

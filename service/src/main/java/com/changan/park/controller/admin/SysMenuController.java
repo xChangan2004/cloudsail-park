@@ -1,6 +1,7 @@
 package com.changan.park.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.config.operlog.OperLog;
 import com.changan.common.constants.Constants;
 import com.changan.park.service.ISysMenuService;
 import com.changan.common.domain.R;
@@ -40,6 +41,7 @@ public class SysMenuController {
     @PostMapping
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:menu:add")
     @Operation(summary = "新增菜单")
+    @OperLog(type = "系统菜单", subType = "新增菜单")
     public R<Void> saveMenu(@Valid @RequestBody SysMenu sysMenu) {
         menuService.saveMenu(sysMenu);
         return R.ok();
@@ -48,6 +50,7 @@ public class SysMenuController {
     @PutMapping
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:menu:edit")
     @Operation(summary = "修改菜单")
+    @OperLog(type = "系统菜单", subType = "修改菜单")
     public R<Void> updateMenu(@Valid @RequestBody SysMenu sysMenu) {
         menuService.updateMenu(sysMenu);
         return R.ok();
@@ -56,6 +59,7 @@ public class SysMenuController {
     @DeleteMapping("/{id}")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:menu:delete")
     @Operation(summary = "删除菜单")
+    @OperLog(type = "系统菜单", subType = "删除菜单")
     public R<Void> deleteMenuById(@PathVariable Long id) {
         menuService.deleteMenuById(id);
         return R.ok();

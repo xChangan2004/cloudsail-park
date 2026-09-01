@@ -1,6 +1,7 @@
 package com.changan.park.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.config.operlog.OperLog;
 import com.changan.common.constants.Constants;
 import com.changan.park.service.ISysRoleService;
 import com.changan.common.domain.R;
@@ -41,6 +42,7 @@ public class SysRoleController {
     @PostMapping
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:role:add")
     @Operation(summary = "新增角色")
+    @OperLog(type = "系统角色", subType = "新增角色")
     public R<Void> saveRole(@Valid @RequestBody SysRole sysRole) {
         roleService.saveRole(sysRole);
         return R.ok();
@@ -49,6 +51,7 @@ public class SysRoleController {
     @PutMapping
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:role:edit")
     @Operation(summary = "修改角色")
+    @OperLog(type = "系统角色", subType = "修改角色")
     public R<Void> updateRole(@Valid @RequestBody SysRole sysRole) {
         roleService.updateRole(sysRole);
         return R.ok();
@@ -57,6 +60,7 @@ public class SysRoleController {
     @DeleteMapping("/{id}")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:role:delete")
     @Operation(summary = "删除角色")
+    @OperLog(type = "系统角色", subType = "删除角色")
     public R<Void> deleteRoleById(
             @PathVariable Long id) {
         roleService.deleteRoleById(id);
@@ -66,6 +70,7 @@ public class SysRoleController {
     @DeleteMapping
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:role:delete")
     @Operation(summary = "批量删除角色")
+    @OperLog(type = "系统角色", subType = "批量删除角色")
     public R<Void> batchDeleteRole(
             @RequestBody List<Long> ids) {
         roleService.batchDeleteRole(ids);
@@ -83,6 +88,7 @@ public class SysRoleController {
     @PostMapping("/assign")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:role:assign")
     @Operation(summary = "分配角色菜单")
+    @OperLog(type = "系统角色", subType = "分配角色菜单")
     public R<Void> assignRole(@Valid @RequestBody AssignRoleMenuDTO assignDTO) {
         roleService.assignRole(assignDTO);
         return R.ok();

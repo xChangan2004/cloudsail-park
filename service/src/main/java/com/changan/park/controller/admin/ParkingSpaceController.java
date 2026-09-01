@@ -1,5 +1,8 @@
 package com.changan.park.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.config.operlog.OperLog;
+import com.changan.common.constants.Constants;
 import com.changan.park.service.IParkingSpaceService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -25,12 +28,15 @@ public class ParkingSpaceController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询车位列表")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:space:list")
     public R<PageDTO<ParkingSpace>> queryParkingSpacePage(@Valid ParkingSpaceQuery query) {
         return R.ok(parkingSpaceService.queryParkingSpacePage(query));
     }
 
     @PostMapping
     @Operation(summary = "新增单个车位")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:space:add")
+    @OperLog(type = "车位", subType = "新增单个车位")
     public R<Void> saveParkingSpace(@Valid @RequestBody ParkingSpace parkingSpace) {
         parkingSpaceService.saveParkingSpace(parkingSpace);
         return R.ok();
@@ -38,6 +44,8 @@ public class ParkingSpaceController {
 
     @PostMapping("/batch")
     @Operation(summary = "批量新增车位")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:space:add")
+    @OperLog(type = "车位", subType = "批量新增车位")
     public R<Void> saveParkingSpaceBatch(
             @RequestBody @NotNull(message = "车位信息不能为空") List<@Valid ParkingSpace> parkingSpaces) {
         parkingSpaceService.saveParkingSpaceBatch(parkingSpaces);
@@ -46,12 +54,15 @@ public class ParkingSpaceController {
 
     @GetMapping("/{id}")
     @Operation(summary = "查询车位详情")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:space:list")
     public R<ParkingSpace> getParkingSpace(@PathVariable @NotNull(message = "车位id不能为空") Long id) {
         return R.ok(parkingSpaceService.getParkingSpace(id));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除车位")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:space:delete")
+    @OperLog(type = "车位", subType = "删除车位")
     public R<Void> deleteParkingSpace(@PathVariable @NotNull(message = "车位id不能为空") Long id) {
         parkingSpaceService.deleteParkingSpace(id);
         return R.ok();
@@ -59,6 +70,8 @@ public class ParkingSpaceController {
 
     @PutMapping("/{id}/status")
     @Operation(summary = "切换车位状态")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:space:edit")
+    @OperLog(type = "车位", subType = "切换车位状态")
     public R<Void> updateParkingSpaceStatus(@PathVariable @NotNull(message = "车位id不能为空") Long id,
                                             @RequestParam @NotNull(message = "状态不能为空") ParkingSpaceStatus status) {
         parkingSpaceService.updateParkingSpaceStatus(id, status);

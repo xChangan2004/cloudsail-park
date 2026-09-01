@@ -1,5 +1,8 @@
 package com.changan.park.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.config.operlog.OperLog;
+import com.changan.common.constants.Constants;
 import com.changan.common.domain.R;
 import com.changan.model.dto.RefundFormDTO;
 import com.changan.park.service.IPayService;
@@ -22,6 +25,8 @@ public class PayController {
 
     @PostMapping("/refund")
     @Operation(summary = "退款（全部）")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "pay:refund")
+    @OperLog(type = "支付", subType = "订单退款")
     public R<Void> refund(@RequestBody @Valid RefundFormDTO dto) {
         payService.refund(dto);
         return R.ok();

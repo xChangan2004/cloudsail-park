@@ -1,5 +1,7 @@
 package com.changan.park.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.changan.common.constants.Constants;
 import com.changan.park.service.ISysOperateService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -22,6 +24,7 @@ public class SysOperateLogController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询操作日志")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:operlog:list")
     public R<PageDTO<SysOperateLogVO>> queryOperLogPage(SysOperateLogQuery query) {
         return R.ok(sysOperateService.queryOperLogPage(query));
     }
