@@ -46,6 +46,10 @@ public interface Constants {
          * 账户体系类型
          */
         String TYPE = "admin";
+        /**
+         * 超级管理员角色编码（登录时特判：直接加载全部启用菜单）
+         */
+        String SUPER_ADMIN_CODE = "super_admin";
     }
 
     interface App {

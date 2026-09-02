@@ -16,6 +16,8 @@ public interface ISysUserService extends IService<SysUser> {
 
     LoginVO login(UserLoginDTO loginDTO);
 
+    void logout();
+
     UserDetailVO queryUserById(Long id);
 
     PageDTO<UserPageVO> queryUserPage(SysUserQuery query);

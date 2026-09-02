@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.constants.Constants;
 import com.changan.common.utils.StpKit;
 import com.changan.park.mapper.*;
 import com.changan.park.service.ISysUserService;
@@ -91,6 +92,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .map(SysRole::getCode)
                 .collect(Collectors.toList());
 
+        // 超级管理员特判：不受菜单绑定限制，登录时直接加载全部启用菜单
+        boolean isSuperAdmin = roleList.contains(Constants.Admin.SUPER_ADMIN_CODE);
+
         // 查询角色关联的菜单ID
         List<SysRoleMenu> roleMenus = roleMenuMapper.selectList(
                 Wrappers.lambdaQuery(SysRoleMenu.class)
@@ -100,18 +104,18 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .map(SysRoleMenu::getMenuId)
                 .collect(Collectors.toSet());
 
-        // 用户角色未分配任何菜单，返回空权限
-        if (menuIds.isEmpty()) {
+        // 普通角色未分配任何菜单，返回空权限（超管跳过，走全量加载）
+        if (menuIds.isEmpty() && !isSuperAdmin) {
             StpKit.ADMIN.login(user.getId(), 28800);
             StpKit.ADMIN.getTokenSession().set(EXTRA_ROLE_LIST, roleList);
             StpKit.ADMIN.getTokenSession().set(EXTRA_PERM_LIST, Collections.emptyList());
             return buildLoginVO(user, roleList, Collections.emptyList(), Collections.emptyList());
         }
 
-        // 查询所有启用状态的菜单（包含目录、菜单、按钮）
+        // 超管加载全部启用菜单；普通角色按角色-菜单关联加载
         List<SysMenu> allMenus = menuMapper.selectList(
                 Wrappers.lambdaQuery(SysMenu.class)
-                        .in(SysMenu::getId, menuIds)
+                        .in(!isSuperAdmin, SysMenu::getId, menuIds)
                         .eq(SysMenu::getStatus, CommonStatus.ENABLE)
         );
 
@@ -141,6 +145,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 构造登录返回结果
         return buildLoginVO(user, roleList, permList, menuTree);
+    }
+    @Override
+    public void logout() {
+        StpKit.ADMIN.logout();
     }
 
     @Override

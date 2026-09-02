@@ -35,6 +35,13 @@ public class SysUserController {
         return R.ok(userService.login(loginDTO));
     }
 
+    @PostMapping("/logout")
+    @Operation(summary = "退出登录")
+    public R<Void> logout() {
+        userService.logout();
+        return R.ok();
+    }
+
     @PostMapping
     @Operation(summary = "新增用户")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:add")
