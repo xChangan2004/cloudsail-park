@@ -1,6 +1,7 @@
 package com.changan.model.vo;
 
 import com.changan.common.enums.CommonStatus;
+import com.changan.common.enums.Sex;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -18,6 +19,9 @@ public class UserPageVO {
 
     @Schema(description = "昵称")
     private String nickname;
+
+    @Schema(description = "性别")
+    private Sex sex;
 
     @Schema(description = "手机号")
     private String phone;
