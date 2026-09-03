@@ -1,5 +1,6 @@
 package com.changan.common.config.mvc;
 
+import cn.dev33.satoken.SaManager;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.router.SaRouter;
 import com.changan.common.converter.StringToBaseEnumConverterFactory;
@@ -12,6 +13,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @AutoConfiguration
 public class MvcConfig implements WebMvcConfigurer {
+
+    static {
+        // 启动时立即注册自定义 StpLogic，避免 StpKit 懒加载导致注解校验（@SaCheckPermission 按 type 查注册表）找不到实例
+        SaManager.putStpLogic(StpKit.ADMIN);
+        SaManager.putStpLogic(StpKit.APP);
+    }
 
     @Override
     public void addFormatters(FormatterRegistry registry) {
