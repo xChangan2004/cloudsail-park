@@ -14,11 +14,11 @@ public interface RegexConstants extends RegexPool {
     /**
      * 密码正则。6~32位的字母、数字、下划线
      */
-    String PASSWORD_PATTERN = "^\\w{4,24}$";
+    String PASSWORD_PATTERN = "^\\w{6,32}$";
     /**
-     * 用户名正则。6~32位的字母、数字、下划线
+     * 用户名正则。4~20位的字母、数字、下划线
      */
-    String USERNAME_PATTERN = "^\\w{4,32}$";
+    String USERNAME_PATTERN = "^\\w{4,20}$";
     /**
      * 验证码正则。6位的数字
      */

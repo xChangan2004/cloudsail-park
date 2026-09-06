@@ -112,5 +112,7 @@ alipay:
 
 # 停车场相关配置
 parking:
+  user:
+    origin-pwd: 123456
   customer-plate:
     max-bind-count: 5 # 单个客户最大可绑定的车牌数量

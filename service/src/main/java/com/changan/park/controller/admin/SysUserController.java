@@ -7,9 +7,9 @@ import com.changan.park.service.ISysUserService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
-import com.changan.model.dto.UserFormDTO;
 import com.changan.model.dto.UserLoginDTO;
-import com.changan.model.dto.UserResetPwdDTO;
+import com.changan.model.dto.UserSaveDTO;
+import com.changan.model.dto.UserUpdateDTO;
 import com.changan.model.query.SysUserQuery;
 import com.changan.model.vo.LoginVO;
 import com.changan.model.vo.UserDetailVO;
@@ -46,7 +46,7 @@ public class SysUserController {
     @Operation(summary = "新增用户")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:add")
     @OperLog(type = "系统用户", subType = "新增用户")
-    public R<Void> saveUser(@Valid @RequestBody UserFormDTO dto) {
+    public R<Void> saveUser(@Valid @RequestBody UserSaveDTO dto) {
         userService.saveUser(dto);
         return R.ok();
     }
@@ -76,12 +76,12 @@ public class SysUserController {
         return R.ok();
     }
 
-    @PutMapping("/resetPwd")
+    @PutMapping("/resetPwd/{id}")
     @Operation(summary = "重置密码")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
     @OperLog(type = "系统用户", subType = "重置密码")
-    public R<Void> resetPwd(@Valid @RequestBody UserResetPwdDTO dto) {
-        userService.resetPwd(dto);
+    public R<Void> resetPwd(@PathVariable @NotNull(message = "用户id不能为空") Long id) {
+        userService.resetPwd(id);
         return R.ok();
     }
 
@@ -89,7 +89,7 @@ public class SysUserController {
     @Operation(summary = "删除用户")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:delete")
     @OperLog(type = "系统用户", subType = "删除用户")
-    public R<Void> deleteUserById(@PathVariable Long id) {
+    public R<Void> deleteUserById(@PathVariable @NotNull(message = "用户id不能为空") Long id) {
         userService.deleteUserById(id);
         return R.ok();
     }
@@ -98,7 +98,7 @@ public class SysUserController {
     @Operation(summary = "修改用户")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:user:edit")
     @OperLog(type = "系统用户", subType = "修改用户")
-    public R<Void> updateUser(@Valid @RequestBody UserFormDTO dto) {
+    public R<Void> updateUser(@Valid @RequestBody UserUpdateDTO dto) {
         userService.updateUser(dto);
         return R.ok();
     }

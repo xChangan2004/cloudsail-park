@@ -19,14 +19,15 @@ import com.changan.common.exceptions.BadRequestException;
 import com.changan.common.exceptions.BizIllegalException;
 import com.changan.common.utils.PasswordUtils;
 import com.changan.common.utils.TreeUtils;
-import com.changan.model.dto.UserFormDTO;
 import com.changan.model.dto.UserLoginDTO;
-import com.changan.model.dto.UserResetPwdDTO;
+import com.changan.model.dto.UserSaveDTO;
+import com.changan.model.dto.UserUpdateDTO;
 import com.changan.model.po.*;
 import com.changan.model.query.SysUserQuery;
 import com.changan.model.vo.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final SysMenuMapper menuMapper;
     private final Executor bizTaskExecutor;
     private final HttpServletRequest request;
+
+    @Value("${parking.user.origin-pwd}")
+    private String originPwd;
 
     /**
      * 用户登录认证
@@ -146,6 +150,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 构造登录返回结果
         return buildLoginVO(user, roleList, permList, menuTree);
     }
+
     @Override
     public void logout() {
         StpKit.ADMIN.logout();
@@ -213,35 +218,32 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
-    public void resetPwd(UserResetPwdDTO dto) {
-        Long userId = dto.getUserId();
-        String password = dto.getPassword();
-
+    public void resetPwd(Long id) {
         // 查询用户
-        SysUser exists = getById(userId);
+        SysUser exists = getById(id);
         if (exists == null) {
             throw new BadRequestException("用户不存在");
         }
         // 禁止新密码与旧密码相同
-        if (PasswordUtils.matches(password, exists.getPassword())) {
+        if (PasswordUtils.matches(originPwd, exists.getPassword())) {
             throw new BizIllegalException("新密码不能与原密码一致");
         }
 
         // 加密更新密码
-        String encryptPwd = PasswordUtils.encode(password);
+        String encryptPwd = PasswordUtils.encode(originPwd);
         SysUser update = new SysUser();
-        update.setId(userId);
+        update.setId(id);
         update.setPassword(encryptPwd);
         updateById(update);
 
         // 强制下线所有会话
-        StpKit.ADMIN.kickout(userId);
+        StpKit.ADMIN.kickout(id);
     }
 
     @Override
     @Transactional
-    public void saveUser(UserFormDTO dto) {
-        // 1.校验用户名唯一
+    public void saveUser(UserSaveDTO dto) {
+        // 1.校验用户名唯一（格式校验由 DTO 注解完成）
         Long count = lambdaQuery()
                 .eq(SysUser::getUsername, dto.getUsername())
                 .count();
@@ -279,8 +281,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new BizIllegalException("所处状态不可删除");
         }
         // 3.删除用户和角色的关联
-        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>()
-                .eq(SysUserRole::getUserId, id));
+        userRoleMapper.physicalDeleteByUserId(user.getId());
         // 4.删除用户
         removeById(id);
         // 5.预防万一，需要踢出用户
@@ -289,39 +290,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     @Transactional
-    public void updateUser(UserFormDTO dto) {
-        // 1.校验用户名唯一，去除自己
-        Long count = lambdaQuery()
-                .eq(SysUser::getUsername, dto.getUsername())
-                .ne(SysUser::getId, dto.getId())
-                .count();
-        if (count > 0) {
-            throw new BizIllegalException("用户名已存在，不可重复修改");
-        }
-        // 2.拷贝用户数据
+    public void updateUser(UserUpdateDTO dto) {
+        // 1.拷贝用户数据
         SysUser user = BeanUtil.copyProperties(dto, SysUser.class);
-        // 3.处理密码加密
-        if (StrUtil.isNotBlank(dto.getPassword())) {
-            user.setPassword(PasswordUtils.encode(dto.getPassword()));
-        } else {
-            user.setPassword(null);  // 不更新密码字段
-        }
-        // 4.修改用户
+        // 2.修改用户
         updateById(user);
-        // 4.1 如果状态变更为禁用，踢出在线用户
-        if (dto.getStatus() != null && dto.getStatus() == CommonStatus.DISABLE) {
-            // 查询原状态
-            SysUser original = getById(dto.getId());
-            if (original.getStatus() == CommonStatus.ENABLE) {
-                StpKit.ADMIN.kickout(dto.getId());
-            }
-        }
-        // 5.移除原用户和角色的关联
-        userRoleMapper.delete(
-                new LambdaQueryWrapper<SysUserRole>()
-                        .eq(SysUserRole::getUserId, user.getId())
-        );
-        // 6.重新建立新的关联
+        // 3.移除原用户和角色的关联
+        userRoleMapper.physicalDeleteByUserId(user.getId());
+        // 4.重新建立新的关联
         List<SysUserRole> roleList = dto.getRoleIds().stream()
                 .map(roleId -> {
                     SysUserRole ur = new SysUserRole();
@@ -330,6 +306,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     return ur;
                 }).collect(Collectors.toList());
         userRoleMapper.insert(roleList);
+        // 5.强制踢出用户
+        StpKit.ADMIN.kickout(dto.getId());
     }
 
     /**

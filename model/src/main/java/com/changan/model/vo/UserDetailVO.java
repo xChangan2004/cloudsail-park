@@ -20,9 +20,6 @@ public class UserDetailVO {
     @Schema(description = "手机号")
     private String phone;
 
-    @Schema(description = "邮箱")
-    private String email;
-
     @Schema(description = "用户性别")
     private Sex sex;
 
