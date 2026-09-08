@@ -143,8 +143,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             throw new BizIllegalException("分配的菜单存在异常");
         }
         // 3.移除原来的菜单关联
-        roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>()
-                .eq(SysRoleMenu::getRoleId, role.getId()));
+        roleMenuMapper.physicalDeleteByRoleId(role.getId());
         // 4.创建关联信息
         List<SysRoleMenu> roleMenus = new ArrayList<>(menus.size());
         for (SysMenu m : menus) {
