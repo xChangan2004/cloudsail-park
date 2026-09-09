@@ -37,6 +37,9 @@ server:
         record-request-start-time: true
 
 spring:
+  mvc:
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
   main:
     allow-bean-definition-overriding: true
   jackson:
