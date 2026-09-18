@@ -3,8 +3,11 @@ package com.changan.park.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.utils.ExcelUtil;
 import com.changan.park.mapper.SysOperateLogMapper;
 import com.changan.park.mapper.SysUserMapper;
 import com.changan.park.service.ISysOperateService;
@@ -13,11 +16,15 @@ import com.changan.model.po.SysOperateLog;
 import com.changan.model.po.SysUser;
 import com.changan.model.query.SysOperateLogQuery;
 import com.changan.model.vo.SysOperateLogVO;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,5 +79,15 @@ public class SysOperateServiceImpl extends ServiceImpl<SysOperateLogMapper, SysO
             vo.setUsername(usernameMap.get(record.getUserId()));
             return vo;
         });
+    }
+
+    @Override
+    public void export(HttpServletResponse response, SysOperateLogQuery query) {
+        // 1.分页查询，只查当前页
+        PageDTO<SysOperateLogVO> dto = queryOperLogPage(query);
+        List<SysOperateLogVO> record = dto.getList();
+        // 2.写入输出流
+        ExcelUtil<SysOperateLogVO> excelUtil = new ExcelUtil<>(SysOperateLogVO.class);
+        excelUtil.exportEasyExcel(response, record, "操作日志");
     }
 }
