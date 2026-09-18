@@ -90,4 +90,9 @@ public class SysOperateServiceImpl extends ServiceImpl<SysOperateLogMapper, SysO
         ExcelUtil<SysOperateLogVO> excelUtil = new ExcelUtil<>(SysOperateLogVO.class);
         excelUtil.exportEasyExcel(response, record, "操作日志");
     }
+
+    @Override
+    public void batchDeleteOperLogByIds(List<Long> ids) {
+        removeByIds(ids);
+    }
 }

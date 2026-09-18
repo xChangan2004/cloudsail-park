@@ -11,11 +11,13 @@ import com.changan.model.vo.SysOperateLogVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.apache.ibatis.annotations.Delete;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/admin/system/operlog")
@@ -38,5 +40,15 @@ public class SysOperateLogController {
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:operlog:export")
     public void export(HttpServletResponse response, SysOperateLogQuery query) {
         sysOperateService.export(response, query);
+    }
+
+    @DeleteMapping("/batch")
+    @Operation(summary = "删除操作日志")
+    @OperLog(type = "操作日志", subType = "删除操作日志")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "system:operlog:delete")
+    public R<Void> batchDeleteOperLogByIds(
+            @Valid @NotEmpty(message = "请先选择要删除的数据") @RequestBody List<Long> ids) {
+        sysOperateService.batchDeleteOperLogByIds(ids);
+        return R.ok();
     }
 }

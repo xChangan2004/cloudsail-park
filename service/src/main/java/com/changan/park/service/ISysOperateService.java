@@ -8,6 +8,7 @@ import com.changan.model.vo.SysOperateLogVO;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface ISysOperateService extends IService<SysOperateLog> {
 
@@ -16,4 +17,6 @@ public interface ISysOperateService extends IService<SysOperateLog> {
     PageDTO<SysOperateLogVO> queryOperLogPage(SysOperateLogQuery query);
 
     void export(HttpServletResponse response, SysOperateLogQuery query);
+
+    void batchDeleteOperLogByIds(List<Long> ids);
 }
