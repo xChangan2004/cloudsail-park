@@ -41,4 +41,10 @@ public class SysOperateLog extends BaseEntity {
 
     @Schema(description = "用户IP")
     private String userIp;
+
+    @Schema(description = "操作方法")
+    private String method;
+
+    @Schema(description = "结果数据")
+    private String jsonResult;
 }

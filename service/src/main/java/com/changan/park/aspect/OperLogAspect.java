@@ -10,13 +10,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
 @Slf4j
@@ -43,6 +46,7 @@ public class OperLogAspect {
             result = pjp.proceed();
             // 3.成功
             logEntity.setSuccess(OperateStatus.SUCCESS);
+            logEntity.setJsonResult(buildResult(result, operLog));
         } catch (Throwable e) {
             // 4.失败，记录异常后必须继续抛出，绝不吞业务异常
             logEntity.setSuccess(OperateStatus.FAIL);
@@ -56,6 +60,7 @@ public class OperLogAspect {
             logEntity.setRequestMethod(getRequestMethod());
             logEntity.setRequestUrl(getRequestUrl());
             logEntity.setUserIp(getUserIp());
+            logEntity.setMethod(getFullMethodName(pjp));
             saveQuietly(logEntity);
         }
         return result;
@@ -140,5 +145,36 @@ public class OperLogAspect {
             return null;
         }
         return str.length() > MAX_LENGTH ? str.substring(0, MAX_LENGTH) : str;
+    }
+
+    /**
+     * 组装返回结果json
+     */
+    private String buildResult(Object result, OperLog operLog) {
+        if (!operLog.recordResult()) {
+            return "ignored";
+        }
+        if (result == null) {
+            return null;
+        }
+        try {
+            return truncate(JSONUtil.toJsonStr(result));
+        } catch (Exception e) {
+            // 序列化失败，降级 toString
+            return truncate(result.toString());
+        }
+    }
+
+    /**
+     * 获取切点全名 com.xxx.controller.XXXController.methodName()
+     */
+    private String getFullMethodName(ProceedingJoinPoint pjp) {
+        Signature signature = pjp.getSignature();
+        if (!(signature instanceof MethodSignature methodSignature)) {
+            return signature.toLongString();
+        }
+        Method method = methodSignature.getMethod();
+        // 类全限定名 + 方法名
+        return method.getDeclaringClass().getName() + "." + method.getName() + "()";
     }
 }

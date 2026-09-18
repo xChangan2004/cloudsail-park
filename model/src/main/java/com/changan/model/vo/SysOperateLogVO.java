@@ -45,4 +45,10 @@ public class SysOperateLogVO {
 
     @Schema(description = "操作时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "操作方法")
+    private String method;
+
+    @Schema(description = "操作结果")
+    private String jsonResult;
 }

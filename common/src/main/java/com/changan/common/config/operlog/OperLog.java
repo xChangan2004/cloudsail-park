@@ -14,4 +14,6 @@ public @interface OperLog {
     String subType(); // 操作名
 
     boolean recordParams() default true; // 记录参数
+
+    boolean recordResult() default true; // 记录结果
 }
