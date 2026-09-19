@@ -65,7 +65,12 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         if (CollUtil.isEmpty(records)) {
             return PageDTO.empty(page);
         }
-        // 2.返回数据
+        // 2.查询已用空位
+        records.forEach(r -> {
+            long usedSpaces = parkingSpaceService.countFreeSpaces(r.getId());
+            r.setUsedSpaces((int) usedSpaces);
+        });
+        // 3.返回数据
         return PageDTO.of(page);
     }
 

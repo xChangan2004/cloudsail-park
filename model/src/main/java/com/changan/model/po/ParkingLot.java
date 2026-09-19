@@ -1,5 +1,6 @@
 package com.changan.model.po;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.changan.common.enums.CommonStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -39,4 +40,8 @@ public class ParkingLot extends BaseEntity implements Serializable {
 
     @Schema(description = "状态")
     private CommonStatus status;
+
+    @TableField(exist = false)
+    @Schema(description = "已使空位")
+    private Integer usedSpaces;
 }
