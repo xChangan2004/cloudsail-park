@@ -17,7 +17,7 @@ public interface IParkingLotService extends IService<ParkingLot> {
 
     PageDTO<ParkingLot> queryParkingLotPage(ParkingLotQuery query);
 
-    ParkingLotFormDTO queryParkingLotById(Long id);
+    ParkingLot queryParkingLotById(Long id);
 
     void updateParkingLot(ParkingLotFormDTO dto);
 

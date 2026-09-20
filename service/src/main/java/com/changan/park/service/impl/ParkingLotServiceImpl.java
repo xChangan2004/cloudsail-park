@@ -65,24 +65,27 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         if (CollUtil.isEmpty(records)) {
             return PageDTO.empty(page);
         }
-        // 2.查询已用空位
+        // 2.查询可用空位
         records.forEach(r -> {
-            long usedSpaces = parkingSpaceService.countFreeSpaces(r.getId());
-            r.setUsedSpaces((int) usedSpaces);
+            long freeSpaces = parkingSpaceService.countFreeSpaces(r.getId());
+            r.setFreeSpaces((int) freeSpaces);
         });
         // 3.返回数据
         return PageDTO.of(page);
     }
 
     @Override
-    public ParkingLotFormDTO queryParkingLotById(Long id) {
+    public ParkingLot queryParkingLotById(Long id) {
         // 1.查询停车场
         ParkingLot parkingLot = getById(id);
         if (parkingLot == null) {
             throw new BadRequestException("停车场不存在");
         }
-        // 2.拷贝数据到DTO并返回
-        return BeanUtil.copyProperties(parkingLot, ParkingLotFormDTO.class);
+        // 2.查询可用空位
+        long countFreeSpaces = parkingSpaceService.countFreeSpaces(parkingLot.getId());
+        parkingLot.setFreeSpaces((int) countFreeSpaces);
+        // 3.返回数据
+        return parkingLot;
     }
 
     @Override

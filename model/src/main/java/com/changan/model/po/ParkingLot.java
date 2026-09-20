@@ -42,6 +42,6 @@ public class ParkingLot extends BaseEntity implements Serializable {
     private CommonStatus status;
 
     @TableField(exist = false)
-    @Schema(description = "已使空位")
-    private Integer usedSpaces;
+    @Schema(description = "可用空位")
+    private Integer freeSpaces;
 }

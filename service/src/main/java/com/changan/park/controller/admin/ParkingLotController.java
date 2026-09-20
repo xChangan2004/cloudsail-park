@@ -44,7 +44,7 @@ public class ParkingLotController {
     @GetMapping("/{id}")
     @Operation(summary = "根据ID查询停车场详情")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:lot:list")
-    public R<ParkingLotFormDTO> queryParkingLotById(@PathVariable Long id) {
+    public R<ParkingLot> queryParkingLotById(@PathVariable Long id) {
         return R.ok(parkingLotService.queryParkingLotById(id));
     }
 
