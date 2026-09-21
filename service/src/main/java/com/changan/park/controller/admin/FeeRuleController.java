@@ -66,7 +66,7 @@ public class FeeRuleController {
         return R.ok();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/status")
     @Operation(summary = "切换计费规则状态")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:fee-rule:edit")
     @OperLog(type = "计费规则", subType = "切换计费规则状态")
