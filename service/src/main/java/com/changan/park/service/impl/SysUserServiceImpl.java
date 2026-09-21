@@ -352,6 +352,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         vo.setIcon(menu.getIcon());
         vo.setVisible(menu.getVisible());
         vo.setKeepAlive(menu.getKeepAlive());
+        vo.setSort(menu.getSort());
         return vo;
     }
 

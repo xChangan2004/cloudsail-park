@@ -31,6 +31,9 @@ public class MenuVO {
     @Schema(description = "菜单图标", example = "ParkingIcon")
     private String icon;
 
+    @Schema(description = "菜单排序", example = "1")
+    private Integer sort;
+
     @Schema(description = "子菜单列表")
     private List<MenuVO> children;
 
