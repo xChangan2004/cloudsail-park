@@ -74,6 +74,8 @@ public class ParkingSpaceServiceImpl extends ServiceImpl<ParkingSpaceMapper, Par
                         .eq(ParkingLot::getId, lotId)
                         .setSql("total_spaces = total_spaces + 1")
         );
+        // 5.清除车位缓存
+        this.evictFreeCountCache(lotId);
     }
 
     @Override
@@ -119,6 +121,9 @@ public class ParkingSpaceServiceImpl extends ServiceImpl<ParkingSpaceMapper, Par
                         .eq(ParkingLot::getId, lotId)
                         .setSql("total_spaces = total_spaces + " + parkingSpaces.size())
         );
+
+        // 7.清除车位缓存
+        this.evictFreeCountCache(lotId);
     }
 
     @Override
