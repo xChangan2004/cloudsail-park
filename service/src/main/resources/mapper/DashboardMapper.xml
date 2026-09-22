@@ -129,4 +129,21 @@
         WHERE rf.is_deleted = 0
     </select>
 
+    <select id="selectRegisterTrend" resultType="com.changan.model.vo.DashboardPlatformVO$TrendPoint">
+        SELECT DATE_FORMAT(create_time, '%Y-%m-%d') date,
+               COUNT(id)                            registerCount
+        FROM customer
+        WHERE is_deleted = 0
+          AND create_time &gt;= #{begin}
+          AND create_time &lt;= #{end}
+        GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d')
+    </select>
+
+    <!-- 累计注册数 -->
+    <select id="selectTotalRegisterCount" resultType="java.lang.Long">
+        SELECT COUNT(id)
+        FROM customer
+        WHERE is_deleted = 0
+    </select>
+
 </mapper>

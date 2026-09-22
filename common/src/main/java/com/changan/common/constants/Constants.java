@@ -39,6 +39,18 @@ public interface Constants {
          * 日期格式
          */
         String DATE_FMT = "yyyy-MM-dd";
+        /**
+         * 平台默认展示天数（一个月）
+         */
+        int PLATFORM_DAYS_DEFAULT = 30;
+        /**
+         * 平台最小展示天数（一周）
+         */
+        int PLATFORM_DAYS_MIN = 7;
+        /**
+         * 平台最大展示天数（一个季度）
+         */
+        int PLATFORM_DAYS_MAX = 90;
     }
 
     interface Admin {
@@ -106,6 +118,6 @@ public interface Constants {
         /**
          * 退款锁key
          */
-        String REFUND_LOCK =  "pay:refund:#{dto.orderNo}";
+        String REFUND_LOCK = "pay:refund:#{dto.orderNo}";
     }
 }

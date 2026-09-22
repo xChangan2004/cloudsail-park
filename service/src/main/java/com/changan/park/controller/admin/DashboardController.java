@@ -2,13 +2,10 @@ package com.changan.park.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.changan.common.constants.Constants;
+import com.changan.model.vo.*;
 import com.changan.park.service.IDashboardService;
 import com.changan.common.config.operlog.OperLog;
 import com.changan.common.domain.R;
-import com.changan.model.vo.DashboardCardsVO;
-import com.changan.model.vo.DashboardTrendVO;
-import com.changan.model.vo.OrderDistributionVO;
-import com.changan.model.vo.PayMethodStatVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -54,5 +51,12 @@ public class DashboardController {
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "dashboard:view")
     public R<PayMethodStatVO> queryPayMethodStat(@RequestParam(required = false) Long lotId) {
         return R.ok(dashboardService.queryPayMethodStat(lotId));
+    }
+
+    @GetMapping("/platform")
+    @Operation(summary = "平台级指标")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "dashboard:view")
+    public R<DashboardPlatformVO> queryPlatform(@RequestParam(required = false) Integer days) {
+        return R.ok(dashboardService.queryPlatform(days));
     }
 }

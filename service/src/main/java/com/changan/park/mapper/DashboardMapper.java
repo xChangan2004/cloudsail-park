@@ -1,9 +1,6 @@
 package com.changan.park.mapper;
 
-import com.changan.model.vo.DashboardCardsVO;
-import com.changan.model.vo.DashboardTrendVO;
-import com.changan.model.vo.OrderDistributionVO;
-import com.changan.model.vo.PayMethodStatVO;
+import com.changan.model.vo.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -45,4 +42,10 @@ public interface DashboardMapper {
     List<PayMethodStatVO.MethodItem> selectPayMethodStat(@Param("lotId") Long lotId);
 
     BigDecimal selectTotalRefund(@Param("lotId") Long lotId);
+
+    List<DashboardPlatformVO.TrendPoint> selectRegisterTrend(
+            @Param("begin") LocalDateTime begin,
+            @Param("end") LocalDateTime end);
+
+    Long selectTotalRegisterCount();
 }

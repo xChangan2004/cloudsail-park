@@ -1,15 +1,12 @@
 package com.changan.park.service.impl;
 
 import cn.hutool.json.JSONUtil;
+import com.changan.model.vo.*;
 import com.changan.park.mapper.DashboardMapper;
 import com.changan.park.service.IDashboardService;
 import com.changan.common.constants.Constants;
 import com.changan.common.enums.OrderStatus;
 import com.changan.common.enums.PayMethod;
-import com.changan.model.vo.DashboardCardsVO;
-import com.changan.model.vo.DashboardTrendVO;
-import com.changan.model.vo.OrderDistributionVO;
-import com.changan.model.vo.PayMethodStatVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -28,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static com.changan.common.constants.Constants.Dashboard.*;
 
 @Service
 @Slf4j
@@ -66,6 +65,47 @@ public class DashboardServiceImpl implements IDashboardService {
         return queryWithCache("pay-method:" + keySuffix(lotId),
                 () -> loadPayMethodStat(lotId),
                 json -> JSONUtil.toBean(json, PayMethodStatVO.class));
+    }
+
+    @Override
+    public DashboardPlatformVO queryPlatform(Integer days) {
+        int window = clampDays(days);
+        return queryWithCache("platform:" + window,
+                () -> loadPlatform(window),
+                json -> JSONUtil.toBean(json, DashboardPlatformVO.class));
+    }
+
+    private DashboardPlatformVO loadPlatform(int days) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime begin = today.minusDays(days - 1L).atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+
+        // 1.先建立 N 天骨架
+        Map<String, DashboardPlatformVO.TrendPoint> skeleton = new LinkedHashMap<>();
+        for (int i = days - 1; i >= 0; i--) {
+            String date = today.minusDays(i)
+                    .format(DATE_FMT);
+            DashboardPlatformVO.TrendPoint point = new DashboardPlatformVO.TrendPoint();
+            point.setDate(date);
+            point.setRegisterCount(0L);
+            skeleton.put(date, point);
+        }
+        // 2.查询数据库，填充骨架数据
+        dashboardMapper.selectRegisterTrend(begin, end).forEach(t -> {
+            DashboardPlatformVO.TrendPoint point = skeleton.get(t.getDate());
+            if (point != null) {
+                point.setRegisterCount(t.getRegisterCount());
+            }
+        });
+        List<DashboardPlatformVO.TrendPoint> trend = new ArrayList<>(skeleton.values());
+        // 3.填充数据
+        DashboardPlatformVO vo = new DashboardPlatformVO();
+        vo.setRegisterTrend(trend);
+        vo.setTrendDays(days);
+        vo.setTodayRegisterCount(trend.get(trend.size() - 1).getRegisterCount());
+        vo.setYesterdayRegisterCount(trend.size() > 1 ? trend.get(trend.size() - 2).getRegisterCount() : 0L);
+        vo.setTotalRegisterCount(dashboardMapper.selectTotalRegisterCount());
+        return vo;
     }
 
     private DashboardCardsVO loadCards(Long lotId) {
@@ -207,5 +247,12 @@ public class DashboardServiceImpl implements IDashboardService {
 
     private String keySuffix(Long lotId) {
         return lotId == null ? "all" : lotId.toString();
+    }
+
+    private int clampDays(Integer days) {
+        if (days == null) {
+            return PLATFORM_DAYS_DEFAULT;
+        }
+        return Math.min(Math.max(days, PLATFORM_DAYS_MIN), PLATFORM_DAYS_MAX);
     }
 }
