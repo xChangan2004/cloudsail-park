@@ -1,5 +1,6 @@
 package com.changan.model.dto;
 
+import com.changan.common.enums.CommonStatus;
 import com.changan.common.enums.FeeRuleType;
 import com.changan.model.po.FeeRule;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -55,4 +56,7 @@ public class FeeRuleFormDTO {
     @Valid
     @Schema(description = "阶梯费率配置")
     private List<FeeRule.Tier> tiers;
+
+    @Schema(description = "状态")
+    private CommonStatus status;
 }
