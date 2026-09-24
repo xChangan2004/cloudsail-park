@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -24,7 +25,7 @@ public class RefundRecord extends BaseEntity {
     private String refundNo;
 
     @Schema(description = "第三方退款流水号")
-    private String transactionId;
+    private String channelRefundNo;
 
     @Schema(description = "退款金额")
     private BigDecimal amount;
@@ -34,4 +35,7 @@ public class RefundRecord extends BaseEntity {
 
     @Schema(description = "退款状态")
     private RefundStatus status;
+
+    @Schema(description = "实际退款时间")
+    private LocalDateTime refundTime;
 }

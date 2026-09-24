@@ -287,59 +287,159 @@ public class PayServiceImpl implements IPayService {
         if (order == null) {
             throw new BizIllegalException("订单不存在");
         }
-        // 2.校验状态（只有已支付才能退）
+        // 2.查询是否已经有退款记录
+        RefundRecord refund = refundRecordService.lambdaQuery()
+                .eq(RefundRecord::getOrderId, order.getId())
+                .orderByDesc(RefundRecord::getCreateTime)
+                .last("LIMIT 1")
+                .one();
+        // 已退款订单重复调用，直接视为成功
+        if (order.getStatus() == OrderStatus.REFUNDED) {
+            if (refund != null && refund.getStatus() == RefundStatus.SUCCESS) {
+                return;
+            }
+            throw new BizIllegalException("订单已退款，但退款记录异常，请人工核查");
+        }
+        // 只允许已支付订单退款
         if (order.getStatus() != OrderStatus.PAID) {
             throw new BizIllegalException("只有已支付的订单才能退款");
         }
         // 3.查支付流水
         PaymentRecord payment = paymentRecordService.lambdaQuery()
                 .eq(PaymentRecord::getOrderId, order.getId())
+                .orderByDesc(PaymentRecord::getPayTime)
+                .last("LIMIT 1")
                 .one();
         if (payment == null) {
             throw new BizIllegalException("支付流水不存在，无法退款");
         }
-        // 4.生成退款单号
-        String refundNo = generateRefundNo();
-        // 5.调用支付宝退款（同步）
+        if (payment.getAmount().compareTo(order.getPaid()) != 0) {
+            throw new BizIllegalException("支付金额与订单实付金额不一致，请人工核查");
+        }
+        // 4.没有退款记录时，先落库为处理中
+        if (refund == null) {
+            refund = new RefundRecord();
+            refund.setOrderId(order.getId());
+            refund.setPaymentId(payment.getId());
+            refund.setRefundNo(generateRefundNo());
+            refund.setChannelRefundNo(null);
+            refund.setAmount(payment.getAmount());
+            refund.setReason(dto.getReason());
+            refund.setStatus(RefundStatus.PROCESS);
+
+            // 这一步必须成功，否则不能调用支付宝
+            refundRecordService.save(refund);
+        } else {
+            // 同一个订单已经退成功，直接返回
+            if (refund.getStatus() == RefundStatus.SUCCESS) {
+                return;
+            }
+
+            if (refund.getAmount().compareTo(payment.getAmount()) != 0
+                    || !refund.getPaymentId().equals(payment.getId())) {
+                throw new BizIllegalException("已有退款记录与支付信息不一致，请人工核查");
+            }
+
+            // 上一次明确失败后重新点击，继续复用原退款单号
+            if (refund.getStatus() == RefundStatus.FAIL) {
+                boolean retryUpdated = refundRecordService.lambdaUpdate()
+                        .eq(RefundRecord::getId, refund.getId())
+                        .eq(RefundRecord::getStatus, RefundStatus.FAIL)
+                        .set(RefundRecord::getStatus, RefundStatus.PROCESS)
+                        .update();
+
+                if (!retryUpdated) {
+                    throw new BizIllegalException("退款状态已变化，请刷新后重试");
+                }
+
+                refund.setStatus(RefundStatus.PROCESS);
+            }
+
+            if (refund.getStatus() != RefundStatus.PROCESS) {
+                throw new BizIllegalException("退款状态异常，请人工核查");
+            }
+        }
+
+        Long refundId = refund.getId();
+
+        // 重试必须复用原来落库的退款原因和退款单号
+        String refundNo = refund.getRefundNo();
+        String refundReason = refund.getReason();
+
+        // 5.调用支付宝退款
         AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
         JSONObject bizContent = new JSONObject();
-        bizContent.put("out_trade_no", order.getOrderNo()); // 原商户订单号
-        bizContent.put("refund_amount", order.getPaid());   // 退实付金额
+        bizContent.put("out_trade_no", order.getOrderNo());
+        bizContent.put("refund_amount", refund.getAmount());
         bizContent.put("out_request_no", refundNo);         // 幂等键
-        bizContent.put("refund_reason", dto.getReason());   // 退款原因
+        bizContent.put("refund_reason", refundReason);   // 退款原因
         request.setBizContent(bizContent.toJSONString());
 
         AlipayTradeRefundResponse response;
         try {
             response = alipayClient.execute(request);
         } catch (AlipayApiException e) {
-            throw new BizIllegalException("调用支付宝退款失败：" + e.getMessage());
+            // 网络超时不能判定失败，退款记录继续保持 PROCESS
+            log.error("调用支付宝退款结果未知，refundNo={}", refundNo, e);
+            throw new BizIllegalException("退款请求结果未知，退款记录仍为处理中，请稍后重试");
         }
+
+        // 支付宝明确返回失败，退款记录改为失败，订单仍保持已支付
         if (!response.isSuccess()) {
+            refundRecordService.lambdaUpdate()
+                    .eq(RefundRecord::getId, refundId)
+                    .eq(RefundRecord::getStatus, RefundStatus.PROCESS)
+                    .set(RefundRecord::getStatus, RefundStatus.FAIL)
+                    .update();
+
+            log.error("支付宝退款失败，refundNo={}, code={}, subCode={}, subMsg={}",
+                    refundNo,
+                    response.getCode(),
+                    response.getSubCode(),
+                    response.getSubMsg());
+
             throw new BizIllegalException("退款失败：" + response.getSubMsg());
         }
-        // 5.支付宝退款成功，调整订单状态
-        String tradeNo = response.getTradeNo(); // 支付宝交易号（第三方交易流水号）
+
+        // 6. 支付宝退款成功，更新退款记录和订单状态
+        String channelRefundNo = StrUtil.isBlank(response.getRefundSettlementId())
+                ? null
+                : response.getRefundSettlementId();
+
+        LocalDateTime refundTime = response.getGmtRefundPay() == null
+                ? LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+                : LocalDateTime.ofInstant(
+                response.getGmtRefundPay().toInstant(),
+                ZoneId.of("Asia/Shanghai"));
+
         transactionTemplate.executeWithoutResult(status -> {
-            boolean updated = parkingOrderService.lambdaUpdate()
+            boolean refundUpdated = refundRecordService.lambdaUpdate()
+                    .eq(RefundRecord::getId, refundId)
+                    .eq(RefundRecord::getStatus, RefundStatus.PROCESS)
+                    .set(RefundRecord::getStatus, RefundStatus.SUCCESS)
+                    .set(RefundRecord::getChannelRefundNo, channelRefundNo)
+                    .set(RefundRecord::getRefundTime, refundTime)
+                    .update();
+
+            if (!refundUpdated) {
+                throw new BizIllegalException("退款记录状态已变化，请刷新后重试");
+            }
+
+            boolean orderUpdated = parkingOrderService.lambdaUpdate()
                     .eq(ParkingOrder::getId, order.getId())
                     .eq(ParkingOrder::getStatus, OrderStatus.PAID)
                     .set(ParkingOrder::getStatus, OrderStatus.REFUNDED)
                     .update();
-            if (!updated) {
-                throw new BizIllegalException("订单状态已变化，请刷新后重试");
+
+            if (!orderUpdated) {
+                ParkingOrder latest = parkingOrderService.getById(order.getId());
+                if (latest == null || latest.getStatus() != OrderStatus.REFUNDED) {
+                    throw new BizIllegalException("退款成功但订单状态更新失败，请人工核查");
+                }
             }
-            // 6.写入退款记录
-            RefundRecord refund = new RefundRecord();
-            refund.setOrderId(order.getId());
-            refund.setPaymentId(payment.getId());
-            refund.setRefundNo(refundNo);
-            refund.setTransactionId(tradeNo);
-            refund.setAmount(order.getPaid());
-            refund.setReason(dto.getReason());
-            refund.setStatus(RefundStatus.SUCCESS);
-            refundRecordService.save(refund);
         });
+
+        log.info("退款成功，orderNo={}, refundNo={}", order.getOrderNo(), refundNo);
     }
 
     private void handlePayNotify(Map<String, String> params) {

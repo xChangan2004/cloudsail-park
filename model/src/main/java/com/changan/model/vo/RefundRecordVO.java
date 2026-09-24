@@ -24,7 +24,7 @@ public class RefundRecordVO {
     private String refundNo;
 
     @Schema(description = "第三方退款流水号")
-    private String transactionId;
+    private String channelRefundNo;
 
     @Schema(description = "退款金额")
     private BigDecimal amount;
@@ -35,6 +35,9 @@ public class RefundRecordVO {
     @Schema(description = "状态")
     private RefundStatus status;
 
-    @Schema(description = "退款时间")
+    @Schema(description = "实际退款时间")
+    private LocalDateTime refundTime;
+
+    @Schema(description = "申请退款时间")
     private LocalDateTime createTime;
 }
