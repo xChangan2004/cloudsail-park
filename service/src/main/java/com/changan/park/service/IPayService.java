@@ -10,5 +10,7 @@ public interface IPayService {
 
     boolean handleNotify(Map<String, String> params);
 
+    void cancelOrder(Long orderId);
+
     void refund(RefundFormDTO dto);
 }

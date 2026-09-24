@@ -30,6 +30,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import cn.hutool.core.util.StrUtil;
+import com.alipay.api.request.AlipayTradeCloseRequest;
+import com.alipay.api.response.AlipayTradeCloseResponse;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -185,6 +189,64 @@ public class PayServiceImpl implements IPayService {
                 .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
                 .set(ParkingOrder::getDiscount, discount)
                 .update();
+    }
+
+    @Override
+    @Lock(name = Constants.Pay.CREATE_PAY_LOCK)
+    public void cancelOrder(Long orderId) {
+        ParkingOrder order = parkingOrderService.getById(orderId);
+        if (order == null) {
+            throw new BizIllegalException("订单不存在");
+        }
+        // 重复点击视为成功，保证接口幂等
+        if (order.getStatus() == OrderStatus.CLOSED) {
+            return;
+        }
+        if (order.getStatus() != OrderStatus.UNPAID) {
+            throw new BizIllegalException("只有待支付订单才能关闭");
+        }
+        // 必须先关闭支付宝交易，再关闭本地订单
+        closeAlipayTrade(order.getOrderNo());
+        // 本地关闭仍然使用原来的 CAS 和优惠券释放逻辑
+        parkingOrderService.closeOrder(orderId);
+    }
+
+    /**
+     * 关闭支付宝交易
+     * 已经不存在支付宝交易时，也允许关闭本地订单
+     */
+    private void closeAlipayTrade(String orderNo) {
+        AlipayTradeCloseRequest request = new AlipayTradeCloseRequest();
+
+        JSONObject bizContent = new JSONObject();
+        bizContent.put("out_trade_no", orderNo);
+        request.setBizContent(bizContent.toJSONString());
+
+        AlipayTradeCloseResponse response;
+        try {
+            response = alipayClient.execute(request);
+        } catch (AlipayApiException e) {
+            log.error("调用支付宝关单异常，orderNo={}", orderNo, e);
+            throw new BizIllegalException("关闭支付宝交易失败，订单未关闭，请稍后重试");
+        }
+
+        if (response.isSuccess()) {
+            log.info("支付宝关单成功，orderNo={}, tradeNo={}", orderNo, response.getTradeNo());
+            return;
+        }
+
+        // 用户从未拉起支付宝，或支付宝侧不存在该交易，可以直接关闭本地订单
+        if ("ACQ.TRADE_NOT_EXIST".equals(response.getSubCode())) {
+            log.info("支付宝交易不存在，直接关闭本地订单，orderNo={}", orderNo);
+            return;
+        }
+
+        log.error("支付宝关单失败，orderNo={}, code={}, subCode={}, subMsg={}",
+                orderNo,
+                response.getCode(),
+                response.getSubCode(),
+                response.getSubMsg());
+        throw new BizIllegalException("关闭支付宝交易失败：" + response.getSubMsg());
     }
 
     @Override

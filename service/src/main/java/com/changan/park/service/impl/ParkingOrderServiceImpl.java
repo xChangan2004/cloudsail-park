@@ -91,16 +91,7 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
     @Override
     @Transactional
     public void closeOrder(Long id) {
-        // 1.查订单
-        ParkingOrder order = getById(id);
-        if (order == null) {
-            throw new BizIllegalException("订单不存在");
-        }
-        // 2.只有待支付才可以关闭
-        if (order.getStatus() != OrderStatus.UNPAID) {
-            throw new BizIllegalException("只有待支付的订单才能关闭");
-        }
-        // 3.CAS关闭
+        // 1.CAS关闭
         boolean updated = lambdaUpdate()
                 .eq(ParkingOrder::getId, id)
                 .eq(ParkingOrder::getStatus, OrderStatus.UNPAID)
@@ -110,7 +101,7 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         if (!updated) {
             throw new BizIllegalException("订单状态已变化，请刷新后重试");
         }
-        // 4.归还优惠券
+        // 2.归还优惠券
         boolean released = customerCouponService.lambdaUpdate()
                 .eq(CustomerCoupon::getOrderId, id)
                 .eq(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)

@@ -9,6 +9,7 @@ import com.changan.common.domain.dto.PageDTO;
 import com.changan.model.query.ParkingOrderQuery;
 import com.changan.model.vo.ParkingOrderDetailVO;
 import com.changan.model.vo.ParkingOrderPageVO;
+import com.changan.park.service.IPayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class ParkingOrderController {
 
     private final IParkingOrderService parkingOrderService;
+    private final IPayService payService;
 
     @GetMapping("/page")
     @Operation(summary = "分页查询订单信息")
@@ -35,7 +37,7 @@ public class ParkingOrderController {
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:order:close")
     @OperLog(type = "停车订单", subType = "关闭订单")
     public R<Void> closeOrder(@PathVariable @NotNull(message = "订单ID不能为空") Long id) {
-        parkingOrderService.closeOrder(id);
+        payService.cancelOrder(id);
         return R.ok();
     }
 
