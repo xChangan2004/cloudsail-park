@@ -102,12 +102,15 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     }
 
     @Override
+    @Transactional
     public void bindPlate(CustomerPlate plate) {
         // 1.查询客户信息
         Customer customer = getById(plate.getCustomerId());
         if (customer == null) {
             throw new BizIllegalException("无法将车牌绑定到不存在的客户");
         }
+        // 主键由后端生成，不接受客户端传值
+        plate.setId(null);
         plate.setPlateNumber(plate.getPlateNumber().toUpperCase());
         // 2.检查车牌是否被他人绑定
         CustomerPlate exists = customerPlateService.lambdaQuery()
@@ -127,11 +130,16 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         if (bindCount >= maxBindCount) {
             throw new BizIllegalException("最多仅可绑定" + maxBindCount + "个车牌，请先解除无用车牌");
         }
-        // 如果客户还没有任何车牌，这条自动设为默认
-        if (bindCount == 0) {
-            plate.setIsDefault(true);
+        // 4.保证「有且仅有一块默认」：首块必为默认，显式指定默认则抢占
+        boolean asDefault = bindCount == 0 || Boolean.TRUE.equals(plate.getIsDefault());
+        if (asDefault && bindCount > 0) {
+            customerPlateService.lambdaUpdate()
+                    .eq(CustomerPlate::getCustomerId, customer.getId())
+                    .set(CustomerPlate::getIsDefault, false)
+                    .update();
         }
-        // 4.保存车牌信息
+        plate.setIsDefault(asDefault);
+        // 5.保存车牌信息
         customerPlateService.save(plate);
     }
 
