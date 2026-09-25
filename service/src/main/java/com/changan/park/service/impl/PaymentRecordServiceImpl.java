@@ -44,9 +44,11 @@ public class PaymentRecordServiceImpl extends ServiceImpl<PaymentRecordMapper, P
         // 2.分页查询
         Page<PaymentRecord> page = lambdaQuery()
                 .eq(orderId != null, PaymentRecord::getOrderId, orderId)
+                .eq(StrUtil.isNotBlank(query.getPaymentNo()), PaymentRecord::getPaymentNo, query.getPaymentNo())
                 .eq(StrUtil.isNotBlank(query.getTransactionId()), PaymentRecord::getTransactionId, query.getTransactionId())
-                .ge(query.getBeginTime() != null, PaymentRecord::getPayTime, query.getBeginTime())
-                .le(query.getEndTime() != null, PaymentRecord::getPayTime, query.getEndTime())
+                .eq(query.getStatus() != null, PaymentRecord::getStatus, query.getStatus())
+                .ge(query.getBeginTime() != null, PaymentRecord::getCreateTime, query.getBeginTime())
+                .le(query.getEndTime() != null, PaymentRecord::getCreateTime, query.getEndTime())
                 .page(query.toMpPageDefaultSortByCreateTimeDesc());
         List<PaymentRecord> records = page.getRecords();
         if (CollUtil.isEmpty(records)) {

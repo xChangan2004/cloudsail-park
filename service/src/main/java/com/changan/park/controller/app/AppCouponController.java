@@ -38,10 +38,10 @@ public class AppCouponController {
     }
 
     @GetMapping("/usable")
-    @Operation(summary = "查询指定金额下可用的优惠券（支付页选券弹层）")
-    public R<List<AppCouponVO>> usable(BigDecimal amount) {
+    @Operation(summary = "查询指定金额下可用的优惠券")
+    public R<List<AppCouponVO>> usable(BigDecimal amount, Long orderId) {
         Long customerId = StpKit.APP.getLoginIdAsLong();
-        return R.ok(customerCouponService.queryUsableCoupons(customerId, amount));
+        return R.ok(customerCouponService.queryUsableCoupons(customerId, amount, orderId));
     }
 
     @GetMapping("/templates")

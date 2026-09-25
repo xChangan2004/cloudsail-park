@@ -116,6 +116,7 @@
             JOIN parking_order po ON pr.order_id = po.id AND po.lot_id = #{lotId}
         </if>
         WHERE pr.is_deleted = 0
+        AND pr.status = 1
         GROUP BY pay_method
     </select>
 

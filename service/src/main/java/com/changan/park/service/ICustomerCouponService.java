@@ -15,7 +15,7 @@ public interface ICustomerCouponService extends IService<CustomerCoupon> {
 
     List<AppCouponVO> queryMyCouponPage(CustomerCouponStatus status, Long customerId);
 
-    List<AppCouponVO> queryUsableCoupons(Long customerId, BigDecimal amount);
+    List<AppCouponVO> queryUsableCoupons(Long customerId, BigDecimal amount, Long orderId);
 
     List<AppCouponTemplateVO> queryReceiveableList(Long customerId);
 }

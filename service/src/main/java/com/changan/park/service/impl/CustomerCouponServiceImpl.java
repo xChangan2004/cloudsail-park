@@ -2,6 +2,7 @@ package com.changan.park.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.config.redisson.annotations.Lock;
 import com.changan.common.enums.CommonStatus;
@@ -15,6 +16,7 @@ import com.changan.park.mapper.CustomerCouponMapper;
 import com.changan.park.service.ICouponTemplateService;
 import com.changan.park.service.ICustomerCouponService;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,55 +97,46 @@ public class CustomerCouponServiceImpl extends ServiceImpl<CustomerCouponMapper,
             return Collections.emptyList();
         }
         // 3.批量查询模板信息
-        Set<Long> templateIds = coupons.stream()
-                .map(CustomerCoupon::getTemplateId)
-                .collect(Collectors.toSet());
-        Map<Long, CouponTemplate> templates = couponTemplateService.listByIds(templateIds)
-                .stream()
-                .collect(Collectors.toMap(CouponTemplate::getId, Function.identity()));
+        Map<Long, CouponTemplate> templates = getTemplateMap(coupons);
         // 4.组装VO
-        return coupons
-                .stream()
-                .map(c -> {
-                    CouponTemplate t = templates.get(c.getTemplateId());
-                    AppCouponVO vo = new AppCouponVO();
-                    vo.setId(c.getId());
-                    vo.setStatus(c.getStatus());
-                    vo.setExpireTime(c.getExpireTime());
-                    vo.setReceiveTime(c.getCreateTime());
-                    if (t != null) {
-                        vo.setName(t.getName());
-                        vo.setThreshold(t.getThreshold());
-                        vo.setAmount(t.getAmount());
-                    }
-                    return vo;
-                }).toList();
+        return coupons.stream()
+                .map(c -> toCouponVO(c, templates.get(c.getTemplateId())))
+                .toList();
     }
 
     @Override
-    public List<AppCouponVO> queryUsableCoupons(Long customerId, BigDecimal amount) {
+    public List<AppCouponVO> queryUsableCoupons(Long customerId, BigDecimal amount, Long orderId) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return Collections.emptyList();
+        }
         // 一次查询完成三个过滤：我的 + 未用 + 未过期 + 门槛达标
         // 门槛用le比较：订单金额≥threshold才可用（threshold=0即无门槛，天然通过）
-        List<CustomerCoupon> coupons = lambdaQuery()
+        LambdaQueryChainWrapper<CustomerCoupon> couponQuery = lambdaQuery()
                 .eq(CustomerCoupon::getCustomerId, customerId)
-                .eq(CustomerCoupon::getStatus, CustomerCouponStatus.UNUSED)
-                .gt(CustomerCoupon::getExpireTime, LocalDateTime.now())  // 实时判过期，不依赖惰性流转
-                .list();
+                .gt(CustomerCoupon::getExpireTime, LocalDateTime.now());// 实时判过期，不依赖惰性流转
+
+        if (orderId == null) {
+            couponQuery.eq(CustomerCoupon::getStatus, CustomerCouponStatus.UNUSED);
+        } else {
+            couponQuery.and(w -> w
+                    .eq(CustomerCoupon::getStatus, CustomerCouponStatus.UNUSED)
+                    .or(n -> n
+                            .eq(CustomerCoupon::getStatus, CustomerCouponStatus.LOCKED)
+                            .eq(CustomerCoupon::getOrderId, orderId)));
+        }
+        List<CustomerCoupon> coupons = couponQuery.list();
         if (CollUtil.isEmpty(coupons)) {
             return Collections.emptyList();
         }
         // 批量查询模板信息
-        Set<Long> templateIds = coupons.stream()
-                .map(CustomerCoupon::getTemplateId)
-                .collect(Collectors.toSet());
-        Map<Long, CouponTemplate> templates = couponTemplateService.listByIds(templateIds)
-                .stream()
-                .collect(Collectors.toMap(CouponTemplate::getId, Function.identity()));
+        Map<Long, CouponTemplate> templates = getTemplateMap(coupons);
         // 返回可用券列表
         return coupons.stream()
                 .filter(c -> {
                     CouponTemplate t = templates.get(c.getTemplateId());
-                    return t != null && amount.compareTo(t.getThreshold()) >= 0; // 订单额 >= 门槛
+                    return t != null
+                            && amount.compareTo(t.getThreshold()) >= 0
+                            && amount.compareTo(t.getAmount()) > 0;
                 })
                 .sorted(Comparator
                         // 抵扣金额降序：省得多的排前面
@@ -151,20 +144,7 @@ public class CustomerCouponServiceImpl extends ServiceImpl<CustomerCouponMapper,
                                 Comparator.reverseOrder())
                         // 同抵扣额时，先过期的排前面（临期券优先消耗）
                         .thenComparing(CustomerCoupon::getExpireTime))
-                .map(c -> {
-                    CouponTemplate t = templates.get(c.getTemplateId());
-                    AppCouponVO vo = new AppCouponVO();
-                    vo.setId(c.getId());
-                    vo.setStatus(c.getStatus());
-                    vo.setExpireTime(c.getExpireTime());
-                    vo.setReceiveTime(c.getCreateTime());
-                    if (t != null) {
-                        vo.setName(t.getName());
-                        vo.setThreshold(t.getThreshold());
-                        vo.setAmount(t.getAmount());
-                    }
-                    return vo;
-                })
+                .map(c -> toUsableCouponVO(c, templates.get(c.getTemplateId())))
                 .toList();
     }
 
@@ -181,6 +161,10 @@ public class CustomerCouponServiceImpl extends ServiceImpl<CustomerCouponMapper,
         templates = templates.stream()
                 .filter(c -> c.getIssuedCount() < c.getTotalCount())
                 .toList();
+
+        if (CollUtil.isEmpty(templates)) {
+            return Collections.emptyList();
+        }
         // 3.根据优惠券模板ID集合批量查询我领取过的优惠券
         List<CustomerCoupon> myCoupons = lambdaQuery()
                 .eq(CustomerCoupon::getCustomerId, customerId)
@@ -200,5 +184,38 @@ public class CustomerCouponServiceImpl extends ServiceImpl<CustomerCouponMapper,
                     vo.setCanReceive(received < t.getPerLimit()); // 前端据此置灰"立即领取"按钮
                     return vo;
                 }).toList();
+    }
+
+    private Map<Long, CouponTemplate> getTemplateMap(List<CustomerCoupon> coupons) {
+        Set<Long> templateIds = coupons.stream()
+                .map(CustomerCoupon::getTemplateId)
+                .collect(Collectors.toSet());
+        return couponTemplateService.listByIds(templateIds)
+                .stream()
+                .collect(Collectors.toMap(CouponTemplate::getId, Function.identity()));
+    }
+
+    private AppCouponVO toUsableCouponVO(CustomerCoupon coupon, CouponTemplate template) {
+        AppCouponVO vo = toCouponVO(coupon, template);
+        if (coupon.getStatus() == CustomerCouponStatus.LOCKED) {
+            vo.setStatus(CustomerCouponStatus.UNUSED);
+        }
+        return vo;
+    }
+
+    private AppCouponVO toCouponVO(CustomerCoupon coupon, CouponTemplate template) {
+        AppCouponVO vo = new AppCouponVO();
+        vo.setId(coupon.getId());
+        vo.setStatus(coupon.getStatus());
+        vo.setExpireTime(coupon.getExpireTime());
+        vo.setReceiveTime(coupon.getCreateTime());
+
+        if (template != null) {
+            vo.setName(template.getName());
+            vo.setThreshold(template.getThreshold());
+            vo.setAmount(template.getAmount());
+        }
+
+        return vo;
     }
 }

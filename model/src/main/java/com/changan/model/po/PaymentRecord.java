@@ -2,6 +2,7 @@ package com.changan.model.po;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.changan.common.enums.PayMethod;
+import com.changan.common.enums.PaymentStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,14 +24,20 @@ public class PaymentRecord extends BaseEntity implements Serializable {
     @Schema(description = "订单ID")
     private Long orderId;
 
+    @Schema(description = "商户支付单号，支付宝 out_trade_no")
+    private String paymentNo;
+
     @Schema(description = "第三方交易流水号")
     private String transactionId;
 
     @Schema(description = "支付方式")
     private PayMethod payMethod;
 
-    @Schema(description = "支付金额")
+    @Schema(description = "本次支付金额")
     private BigDecimal amount;
+
+    @Schema(description = "支付流水状态")
+    private PaymentStatus status;
 
     @Schema(description = "支付时间")
     private LocalDateTime payTime;

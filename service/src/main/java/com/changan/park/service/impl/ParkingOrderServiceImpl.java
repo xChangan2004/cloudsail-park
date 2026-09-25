@@ -47,6 +47,8 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
 
     @Override
     public ParkingOrder createExitOrder(EntryExitRecord record, BigDecimal amount) {
+        boolean noPay = amount.compareTo(BigDecimal.ZERO) == 0;
+
         ParkingOrder order = new ParkingOrder();
         order.setOrderNo(generateOrderNo());
         order.setLotId(record.getLotId());
@@ -56,7 +58,8 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         order.setAmount(amount);
         order.setDiscount(BigDecimal.ZERO);
         order.setPaid(BigDecimal.ZERO);
-        order.setStatus(OrderStatus.UNPAID);
+        order.setPaidTime(noPay ? LocalDateTime.now() : null);
+        order.setStatus(noPay ? OrderStatus.PAID : OrderStatus.UNPAID);
         save(order);
         return order;
     }

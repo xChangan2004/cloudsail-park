@@ -1,6 +1,7 @@
 package com.changan.model.query;
 
 import com.changan.common.domain.query.PageQuery;
+import com.changan.common.enums.PaymentStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,8 +18,14 @@ public class PaymentRecordQuery extends PageQuery {
     @Schema(description = "订单号（精确）")
     private String orderNo;
 
+    @Schema(description = "商户支付单号（精确）")
+    private String paymentNo;
+
     @Schema(description = "第三方交易流水号（精确）")
     private String transactionId;
+
+    @Schema(description = "支付流水状态")
+    private PaymentStatus status;
 
     @Schema(description = "支付开始时间")
     private LocalDateTime beginTime;
