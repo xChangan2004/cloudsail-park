@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
-import static com.changan.common.constants.Constants.Order.ORDER_NO_FORMAT;
+import static com.changan.common.constants.Constants.Order.TIME_FORMAT;
 
 @Slf4j
 @Service
@@ -222,7 +222,7 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
      * CP + yyyyMMddHHmmss + 6位随机数 0~999999
      */
     private String generateOrderNo() {
-        return "CP" + LocalDateTime.now(ZoneId.of("Asia/Shanghai")).format(ORDER_NO_FORMAT)
+        return "CP" + LocalDateTime.now(ZoneId.of("Asia/Shanghai")).format(TIME_FORMAT)
                 + String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
     }
 }

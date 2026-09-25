@@ -25,9 +25,14 @@ public interface Constants {
 
     interface Order {
         /**
-         * 订单号时间部分格式
+         * 时间部分格式
          */
-        DateTimeFormatter ORDER_NO_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+        /**
+         * 支付超时时间
+         */
+        Duration PAY_TIMEOUT = Duration.ofMinutes(30);
     }
 
     interface Dashboard {

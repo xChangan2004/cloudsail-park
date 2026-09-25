@@ -26,10 +26,8 @@ import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +37,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import cn.hutool.core.util.StrUtil;
 import com.alipay.api.request.AlipayTradeCloseRequest;
 import com.alipay.api.response.AlipayTradeCloseResponse;
+
+import static com.changan.common.constants.Constants.Order.PAY_TIMEOUT;
+import static com.changan.common.constants.Constants.Order.TIME_FORMAT;
 
 /**
  * 支付域核心服务。
@@ -50,8 +51,6 @@ import com.alipay.api.response.AlipayTradeCloseResponse;
 @RequiredArgsConstructor
 @Slf4j
 public class PayServiceImpl implements IPayService {
-
-    private static final Duration PAY_TIMEOUT = Duration.ofMinutes(30);
 
     private final AlipayClient alipayClient;
 
@@ -214,7 +213,7 @@ public class PayServiceImpl implements IPayService {
 
         PaymentRecord payment = new PaymentRecord();
         payment.setOrderId(orderId);
-        payment.setPaymentNo(generatePaymentNo(order.getOrderNo()));
+        payment.setPaymentNo(generatePaymentNo());
         payment.setPayMethod(PayMethod.ALIPAY);
         payment.setAmount(payAmount);
         payment.setStatus(PaymentStatus.PENDING);
@@ -813,7 +812,7 @@ public class PayServiceImpl implements IPayService {
      */
     private String generateRefundNo() {
         return "RF" + LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
-                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                .format(TIME_FORMAT)
                 + String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
     }
 
@@ -881,10 +880,10 @@ public class PayServiceImpl implements IPayService {
     /**
      * 生成每次支付尝试唯一的支付宝商户单号。
      */
-    private String generatePaymentNo(String orderNo) {
-        String suffix = System.currentTimeMillis()
-                + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
-        return orderNo + "P" + suffix;
+    private String generatePaymentNo() {
+        return "CPP" + LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+                .format(TIME_FORMAT)
+                + String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
     }
 
     private record PaymentAttempt(PaymentRecord payment, Long couponId) {
