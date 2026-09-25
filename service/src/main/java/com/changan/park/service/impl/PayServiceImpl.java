@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,7 +42,7 @@ import com.alipay.api.response.AlipayTradeCloseResponse;
 
 /**
  * 支付域核心服务。
- *
+ * <p>
  * 一个订单可以有多笔支付尝试，每次发起支付使用新的 paymentNo。
  * 优惠券按订单维度锁定，支付成功后才核销，取消或超时关闭时释放。
  */
@@ -70,7 +71,7 @@ public class PayServiceImpl implements IPayService {
 
     /**
      * 发起支付宝 H5 支付。
-     *
+     * <p>
      * 每次调用都会关闭旧 PENDING 流水，重新处理优惠券，创建新的 PENDING 流水，
      * 并将新的 paymentNo 作为支付宝 out_trade_no。
      */
@@ -148,7 +149,7 @@ public class PayServiceImpl implements IPayService {
 
     /**
      * 在订单行锁内准备本次支付快照。
-     *
+     * <p>
      * couponId 为空：释放旧券并清空优惠。
      * couponId 为当前锁定券：复用现有 discount。
      * couponId 为新券：解锁旧券，锁定新券，并覆盖 order.discount。
@@ -334,6 +335,7 @@ public class PayServiceImpl implements IPayService {
             throw new BizIllegalException("订单状态已变化，请刷新后重试");
         }
     }
+
     private CustomerCoupon findLockedCoupon(Long orderId) {
         return customerCouponService.lambdaQuery()
                 .eq(CustomerCoupon::getOrderId, orderId)
@@ -651,7 +653,7 @@ public class PayServiceImpl implements IPayService {
 
     /**
      * 处理支付成功通知。
-     *
+     * <p>
      * 根据 out_trade_no(paymentNo) 定位 PaymentRecord，再通过 passback_params
      * 校验业务订单和 couponId，最终完成 PENDING -> PAID、订单 PAID、券 USED。
      */
@@ -816,39 +818,64 @@ public class PayServiceImpl implements IPayService {
     }
 
     /**
-     * 解析 passback_params。支付宝可能已解码，也可能仍是 URL 编码，因此这里做一次兼容解码。
+     * 解析 passback_params
      */
     private PayCallbackContext parsePassbackParams(String passbackParams) {
         if (StrUtil.isBlank(passbackParams)) {
             throw new BizIllegalException("支付宝回调缺少透传参数");
         }
-
-        String jsonText = passbackParams;
+        String raw;
         try {
-            jsonText = URLDecoder.decode(passbackParams, StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException ignored) {
+            raw = URLDecoder.decode(passbackParams, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            log.error("支付宝透传参数解码失败，passbackParams:{}", passbackParams, e);
+            throw new BizIllegalException("透传参数解码失败");
         }
 
-        JSONObject json = JSONObject.parseObject(jsonText);
-        String orderNo = json.getString("orderNo");
+        Map<String, String> map = new HashMap<>();
+        String[] pairs = raw.split("&");
+        for (String pair : pairs) {
+            // 跳过空片段，防御连续&符号
+            if (StrUtil.isBlank(pair)) {
+                continue;
+            }
+            // 只分割第一个=，value允许包含=
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2) {
+                map.put(kv[0], kv[1]);
+            }
+        }
 
+        String orderNo = map.get("orderNo");
         if (StrUtil.isBlank(orderNo)) {
             throw new BizIllegalException("支付宝回调透传订单号缺失");
         }
 
-        return new PayCallbackContext(orderNo, json.getLong("couponId"));
+        Long couponId = null;
+        String couponIdStr = map.get("couponId");
+        if (StrUtil.isNotBlank(couponIdStr)) {
+            try {
+                couponId = Long.parseLong(couponIdStr);
+            } catch (NumberFormatException e) {
+                log.error("支付宝回调couponId格式错误，couponIdStr:{}", couponIdStr, e);
+                throw new BizIllegalException("支付宝回调 couponId 格式错误");
+            }
+        }
+        return new PayCallbackContext(orderNo, couponId);
     }
 
     /**
-     * 透传业务订单号和优惠券 ID，用于回调侧确认订单及核销具体优惠券。
+     * 透传业务订单号和优惠券 ID。
+     * 支付宝要求 passback_params 发送前整体 URLEncode。
      */
     private String buildPassbackParams(String orderNo, Long couponId) {
-        JSONObject passback = new JSONObject();
-        passback.put("orderNo", orderNo);
+        StringBuilder sb = new StringBuilder();
+        sb.append("orderNo=").append(orderNo);
         if (couponId != null) {
-            passback.put("couponId", couponId);
+            sb.append("&couponId=").append(couponId);
         }
-        return URLEncoder.encode(passback.toJSONString(), StandardCharsets.UTF_8);
+        // 再整体URLEncode
+        return URLEncoder.encode(sb.toString(), StandardCharsets.UTF_8);
     }
 
     /**
