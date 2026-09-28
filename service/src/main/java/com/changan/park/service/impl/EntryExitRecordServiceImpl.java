@@ -4,7 +4,6 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.utils.StpKit;
@@ -13,14 +12,12 @@ import com.changan.park.mapper.*;
 import com.changan.park.service.IEntryExitRecordService;
 import com.changan.park.service.IFeeRuleService;
 import com.changan.park.service.IParkingOrderService;
-import com.changan.park.service.IParkingSpaceService;
 import com.changan.park.strategy.fee.FeeCalculateStrategy;
 import com.changan.park.strategy.fee.FeeStrategyFactory;
 import com.changan.common.config.redisson.annotations.Lock;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.EntryExitStatus;
 import com.changan.common.enums.EntryType;
-import com.changan.common.enums.ParkingSpaceStatus;
 import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.dto.EntryFormDTO;
 import com.changan.model.dto.ExitFormDTO;
@@ -48,18 +45,15 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
 
     private final ParkingLotMapper parkingLotMapper;
 
-    private final ParkingSpaceMapper parkingSpaceMapper;
-
     private final IFeeRuleService feeRuleService;
 
     private final FeeStrategyFactory feeStrategyFactory;
-
-    private final IParkingSpaceService parkingSpaceService;
 
     private final IParkingOrderService parkingOrderService;
 
     @Override
     @Transactional
+    @Lock(name = "entry:#{dto.lotId}")
     public void entry(EntryFormDTO dto) {
         String upperPlate = dto.getPlateNumber().toUpperCase();
         // 1.根据车牌号反查客户ID
@@ -75,22 +69,21 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (lot == null) {
             throw new BizIllegalException("停车场不存在");
         }
-        // 3.校验车位是否存在，并且属于该停车场
-        ParkingSpace space = parkingSpaceMapper.selectById(dto.getSpaceId());
-        if (space == null || !space.getLotId().equals(lot.getId())) {
-            throw new BizIllegalException("车位不存在，或车位不属于当前停车场");
-        }
-        // 3.1.校验车位可用
-        if (space.getStatus() != ParkingSpaceStatus.FREE) {
-            throw new BizIllegalException("当前车位不可用（已占用或维修中）");
-        }
-        // 4.该车牌号不能存在正在场内的记录（已入场未出场）
-        Long count = lambdaQuery()
+        // 3.该车牌不能已有场内记录
+        Long existing = lambdaQuery()
                 .eq(EntryExitRecord::getPlateNumber, upperPlate)
-                .in(EntryExitRecord::getStatus, EntryExitStatus.PENDING_ENTRY, EntryExitStatus.ENTERED)
+                .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
                 .count();
-        if (count > 0) {
+        if (existing > 0) {
             throw new BizIllegalException("该车辆已有入场记录，请勿重复申请入场");
+        }
+        // 4.停车场是否还有余位
+        Long occupied = lambdaQuery()
+                .eq(EntryExitRecord::getLotId, dto.getLotId())
+                .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
+                .count();
+        if (lot.getTotalSpaces() == null || occupied >= lot.getTotalSpaces()) {
+            throw new BizIllegalException("该停车场车位已满");
         }
         // 5.欠费拦截：存在未支付订单时不允许入场
         List<ParkingOrder> unpaidOrders = parkingOrderService.listUnpaidByPlate(upperPlate);
@@ -110,16 +103,6 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         record.setStatus(EntryExitStatus.ENTERED);
         // 7.保存数据
         save(record);
-        // 8.更新车位状态
-        int rows = parkingSpaceMapper.update(new LambdaUpdateWrapper<ParkingSpace>()
-                .eq(ParkingSpace::getId, space.getId())
-                .eq(ParkingSpace::getStatus, space.getStatus())
-                .set(ParkingSpace::getStatus, ParkingSpaceStatus.OCCUPIED));
-        if (rows == 0) {
-            throw new BizIllegalException("车位已被抢占或状态已变化，请重试");
-        }
-        // 9.清除该场地余位缓存
-        parkingSpaceService.evictFreeCountCache(dto.getLotId());
     }
 
     @Override
@@ -140,13 +123,11 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         }
         // 2.批量翻译名称：停车场、车位、客户
         Map<Long, String> lotNames = translateLotNames(records);
-        Map<Long, String> spaceCodes = translateSpaceCodes(records);
         Map<Long, String> customerNames = translateCustomerNames(records);
         // 3.组装VO
         return PageDTO.of(page, record -> {
             EntryExitRecordPageVO vo = BeanUtil.copyProperties(record, EntryExitRecordPageVO.class);
             vo.setLotName(lotNames.get(record.getLotId()));
-            vo.setSpaceCode(spaceCodes.get(record.getSpaceId()));
             vo.setCustomerName(customerNames.get(record.getCustomerId()));
             vo.setDuration(calculateDuration(record));
             return vo;
@@ -188,19 +169,9 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         if (!updated) {
             throw new BizIllegalException("车辆状态已发生变化，请刷新后重试");
         }
-        // 6.释放车位
-        int rows = parkingSpaceMapper.update(new LambdaUpdateWrapper<ParkingSpace>()
-                .eq(ParkingSpace::getId, record.getSpaceId())
-                .eq(ParkingSpace::getStatus, ParkingSpaceStatus.OCCUPIED)
-                .set(ParkingSpace::getStatus, ParkingSpaceStatus.FREE));
-        if (rows == 0) {
-            throw new BizIllegalException("车位状态异常，请人工核查后重试");
-        }
-        // 7.生成停车订单
+        // 6.生成停车订单
         ParkingOrder order = parkingOrderService.createExitOrder(record, amount);
-        // 8.清除该场地余位缓存
-        parkingSpaceService.evictFreeCountCache(record.getLotId());
-        // 8.组装账单
+        // 7.组装账单
         ExitBillVO vo = new ExitBillVO();
         vo.setRecordId(record.getId());
         vo.setPlateNumber(record.getPlateNumber());
@@ -253,17 +224,6 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
                 .collect(Collectors.toSet());
         return parkingLotMapper.selectByIds(ids).stream()
                 .collect(Collectors.toMap(ParkingLot::getId, ParkingLot::getName));
-    }
-
-    /**
-     * 批量查询车位编号，转成 id -> spaceCode 映射
-     */
-    private Map<Long, String> translateSpaceCodes(List<EntryExitRecord> records) {
-        Set<Long> ids = records.stream()
-                .map(EntryExitRecord::getSpaceId)
-                .collect(Collectors.toSet());
-        return parkingSpaceMapper.selectByIds(ids).stream()
-                .collect(Collectors.toMap(ParkingSpace::getId, ParkingSpace::getSpaceCode));
     }
 
     /**

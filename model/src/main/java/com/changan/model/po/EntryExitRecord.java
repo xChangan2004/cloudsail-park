@@ -23,9 +23,6 @@ public class EntryExitRecord extends BaseEntity implements Serializable {
     @Schema(description = "停车场ID")
     private Long lotId;
 
-    @Schema(description = "车位ID")
-    private Long spaceId;
-
     @Schema(description = "客户ID")
     private Long customerId;
 

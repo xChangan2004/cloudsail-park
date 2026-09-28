@@ -3,12 +3,16 @@ package com.changan.park.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.constants.Constants;
+import com.changan.common.enums.EntryExitStatus;
 import com.changan.common.utils.GeoUtils;
+import com.changan.model.po.EntryExitRecord;
 import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.vo.AppParkingLotVO;
+import com.changan.park.mapper.EntryExitRecordMapper;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.service.IParkingLotService;
 import com.changan.common.domain.dto.PageDTO;
@@ -18,23 +22,21 @@ import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.dto.ParkingLotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
-import com.changan.park.service.IParkingSpaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.geo.*;
 import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, ParkingLot> implements IParkingLotService {
 
-    private final IParkingSpaceService parkingSpaceService;
-
     private final RedisTemplate<String, Object> redisTemplate;
+
+    private final EntryExitRecordMapper entryExitRecordMapper;
 
     @Override
     public void saveParkingLot(ParkingLotFormDTO dto) {
@@ -66,10 +68,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
             return PageDTO.empty(page);
         }
         // 2.查询可用空位
-        records.forEach(r -> {
-            long freeSpaces = parkingSpaceService.countFreeSpaces(r.getId());
-            r.setFreeSpaces((int) freeSpaces);
-        });
+        records.forEach(r -> r.setFreeSpaces((int) countFreeSpaces(r.getId())));
         // 3.返回数据
         return PageDTO.of(page);
     }
@@ -82,8 +81,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
             throw new BadRequestException("停车场不存在");
         }
         // 2.查询可用空位
-        long countFreeSpaces = parkingSpaceService.countFreeSpaces(parkingLot.getId());
-        parkingLot.setFreeSpaces((int) countFreeSpaces);
+        parkingLot.setFreeSpaces((int) countFreeSpaces(id));
         // 3.返回数据
         return parkingLot;
     }
@@ -254,9 +252,22 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
      */
     private AppParkingLotVO buildLotVO(ParkingLot lot) {
         AppParkingLotVO vo = BeanUtil.copyProperties(lot, AppParkingLotVO.class);
-        vo.setFreeSpaces(parkingSpaceService.countFreeSpaces(lot.getId()));
-        vo.setHasFree(vo.getFreeSpaces() > 0);
+        long free = countFreeSpaces(lot.getId());
+        vo.setFreeSpaces(free);
+        vo.setHasFree(free > 0);
         return vo;
+    }
+
+    private long countFreeSpaces(Long id) {
+        ParkingLot lot = getById(id);
+        if (lot == null || lot.getTotalSpaces() == null) {
+            return 0;
+        }
+        Long occupied = entryExitRecordMapper.selectCount(new LambdaQueryWrapper<EntryExitRecord>()
+                .eq(EntryExitRecord::getLotId, id)
+                .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
+        );
+        return Math.max(0, lot.getTotalSpaces() - occupied);
     }
 
     private void syncGeo(ParkingLot lot) {

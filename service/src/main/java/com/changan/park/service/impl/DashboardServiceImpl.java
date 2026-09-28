@@ -116,14 +116,16 @@ public class DashboardServiceImpl implements IDashboardService {
         BigDecimal income = dashboardMapper.selectTodayIncome(todayBegin, tomorrowBegin, lotId);
         DashboardCardsVO entryExit = dashboardMapper.selectTodayEntryExit(todayBegin, tomorrowBegin, lotId);
         DashboardCardsVO spaces = dashboardMapper.selectSpaceStat(lotId);
+        long total = spaces.getTotalSpaces() == null ? 0L : spaces.getTotalSpaces();
+        long occupied = spaces.getOccupiedSpaces() == null ? 0L : spaces.getOccupiedSpaces();
         // 3.填充数据
         DashboardCardsVO vo = new DashboardCardsVO();
         vo.setTodayIncome(income);
         vo.setTodayEntryCount(entryExit.getTodayEntryCount());
         vo.setTodayExitCount(entryExit.getTodayExitCount());
-        vo.setTotalSpaces(spaces.getTotalSpaces());
-        vo.setFreeSpaces(spaces.getFreeSpaces());
-        vo.setOccupiedSpaces(spaces.getOccupiedSpaces());
+        vo.setTotalSpaces(total);
+        vo.setFreeSpaces(Math.max(0L, total - occupied));
+        vo.setOccupiedSpaces(occupied);
         return vo;
     }
 

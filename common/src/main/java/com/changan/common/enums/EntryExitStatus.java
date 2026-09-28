@@ -8,7 +8,6 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum EntryExitStatus implements BaseEnum {
-    PENDING_ENTRY(0, "待入场"),
     ENTERED(1, "已入场"),
     EXITED(2, "已离场"),
     ;

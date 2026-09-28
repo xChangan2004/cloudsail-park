@@ -15,10 +15,6 @@ public class EntryFormDTO {
     @Schema(description = "停车场ID")
     private Long lotId;
 
-    @NotNull(message = "车位ID不能为空")
-    @Schema(description = "车位ID")
-    private Long spaceId;
-
     @NotNull(message = "车牌号码不能为空")
     @Pattern(regexp = RegexConstants.PLATE_NUMBER, message = "车牌号码格式不正确")
     @Schema(description = "车牌号码")

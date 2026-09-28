@@ -17,9 +17,6 @@ public class EntryExitRecordPageVO {
     @Schema(description = "停车场名称")
     private String lotName;
 
-    @Schema(description = "车位编号")
-    private String spaceCode;
-
     @Schema(description = "客户昵称")
     private String customerName;
 

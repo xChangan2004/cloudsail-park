@@ -39,14 +39,12 @@
     -->
     <select id="selectSpaceStat" resultType="com.changan.model.vo.DashboardCardsVO">
         SELECT
-        COUNT(*) AS totalSpaces,
-        IFNULL(SUM(status = 2), 0) AS occupiedSpaces,
-        IFNULL(SUM(status = 1), 0) AS freeSpaces
-        FROM parking_space
+        (SELECT IFNULL(SUM(total_spaces), 0) FROM parking_lot
         WHERE is_deleted = 0
-        <if test="lotId != null">
-            AND lot_id = #{lotId}
-        </if>
+        <if test="lotId != null">AND id = #{lotId}</if>) AS totalSpaces,
+        (SELECT COUNT(*) FROM entry_exit_record
+        WHERE is_deleted = 0 AND status = 1
+        <if test="lotId != null">AND lot_id = #{lotId}</if>) AS occupiedSpaces
     </select>
 
     <!--
