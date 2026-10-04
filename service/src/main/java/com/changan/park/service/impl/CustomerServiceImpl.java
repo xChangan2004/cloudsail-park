@@ -198,6 +198,33 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         return customerPlateService.getById(id);
     }
 
+    @Override
+    @Transactional
+    public void defaultPlate(Long id) {
+        // 1.获取客户ID
+        long customerId = StpKit.APP.getLoginIdAsLong();
+        // 2.查询并校验归属
+        CustomerPlate plate = customerPlateService.getById(id);
+        if (plate == null) {
+            throw new BizIllegalException("车牌记录不存在");
+        }
+        if (!plate.getCustomerId().equals(customerId)) {
+            throw new BizIllegalException("无法操作不属于您的车牌");
+        }
+        // 3.已经是默认就不用动
+        if (Boolean.TRUE.equals(plate.getIsDefault())) {
+            return;
+        }
+        // 4.移除原来的默认车牌
+        customerPlateService.lambdaUpdate()
+                .eq(CustomerPlate::getCustomerId, customerId)
+                .set(CustomerPlate::getIsDefault, false).update();
+        // 5.设为默认
+        customerPlateService.lambdaUpdate()
+                .eq(CustomerPlate::getId, id)
+                .set(CustomerPlate::getIsDefault, true).update();
+    }
+
     /**
      * 校验手机号唯一性
      *

@@ -46,4 +46,11 @@ public class AppPlateController {
     public R<CustomerPlate> queryPlateById(@PathVariable Long id) {
         return R.ok(customerService.queryCustomerPlateById(id));
     }
+
+    @PutMapping("/{id}/default")
+    @Operation(summary = "设为默认车牌")
+    public R<Void> defaultPlate(@PathVariable Long id) {
+        customerService.defaultPlate(id);
+        return R.ok();
+    }
 }

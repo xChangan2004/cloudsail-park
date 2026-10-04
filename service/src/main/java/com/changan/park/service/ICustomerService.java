@@ -32,4 +32,6 @@ public interface ICustomerService extends IService<Customer> {
     PageDTO<CustomerPlate> queryCustomerPlatePage(PlateQuery query);
 
     CustomerPlate queryCustomerPlateById(Long id);
+
+    void defaultPlate(Long id);
 }
