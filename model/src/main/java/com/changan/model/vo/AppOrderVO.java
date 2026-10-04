@@ -20,12 +20,24 @@ public class AppOrderVO {
     @Schema(description = "车牌号码")
     private String plateNumber;
 
-    @Schema(description = "金额（未支付=应付，已支付=成交额）")
+    @Schema(description = "金额")
     private BigDecimal amount;
+
+    @Schema(description = "优惠金额")
+    private BigDecimal discount;
+
+    @Schema(description = "实付")
+    private BigDecimal paid;
 
     @Schema(description = "订单状态")
     private OrderStatus status;
 
+    @Schema(description = "停车时长")
+    private Long duration;
+
     @Schema(description = "下单时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updateTime;
 }

@@ -10,6 +10,7 @@ import com.changan.model.po.*;
 import com.changan.model.query.AppOrderQuery;
 import com.changan.model.vo.*;
 import com.changan.park.mapper.CustomerMapper;
+import com.changan.park.mapper.EntryExitRecordMapper;
 import com.changan.park.mapper.ParkingLotMapper;
 import com.changan.park.mapper.ParkingOrderMapper;
 import com.changan.park.service.ICustomerCouponService;
@@ -24,12 +25,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.changan.common.constants.Constants.Order.TIME_FORMAT;
@@ -44,6 +48,8 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
     private final CustomerMapper customerMapper;
 
     private final ICustomerCouponService customerCouponService;
+
+    private final EntryExitRecordMapper entryExitRecordMapper;
 
     @Override
     public ParkingOrder createExitOrder(EntryExitRecord record, BigDecimal amount) {
@@ -152,12 +158,30 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         if (CollUtil.isEmpty(records)) {
             return PageDTO.empty(page);
         }
-        // 2.批量翻译停车场名称
+        // 2.收集记录ID
+        List<Long> recordIds = records.stream()
+                .map(ParkingOrder::getRecordId)
+                .distinct()
+                .toList();
+        // 3.批量查询记录信息
+        List<EntryExitRecord> entryExitRecords = entryExitRecordMapper.selectByIds(recordIds);
+        Map<Long, EntryExitRecord> recordMap = entryExitRecords.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(EntryExitRecord::getId, Function.identity()));
+        // 4.批量翻译停车场名称
         Map<Long, String> lotNames = translateLotNames(records);
-        // 3.组装VO
+        // 5.组装VO
         return PageDTO.of(page, order -> {
             AppOrderVO vo = BeanUtil.copyProperties(order, AppOrderVO.class);
             vo.setLotName(lotNames.get(order.getLotId()));
+            EntryExitRecord record = recordMap.get(order.getRecordId());
+            if (record != null) {
+                LocalDateTime entryTime = record.getEntryTime();
+                LocalDateTime exitTime = record.getExitTime();
+                // 计算进入到出场的相差秒数
+                long seconds = Duration.between(entryTime, exitTime).toSeconds();
+                vo.setDuration(seconds);
+            }
             return vo;
         });
     }
