@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum OrderStatus {
+public enum OrderStatus implements BaseEnum {
     UNPAID(0, "待支付"),
     PAID(1, "已支付"),
     CLOSED(2, "已关闭"),
