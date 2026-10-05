@@ -30,6 +30,9 @@ public class AppCouponTemplateVO {
     @Schema(description = "我已领取张数")
     private Integer received;
 
+    @Schema(description = "限领数量")
+    private Integer perLimit;
+
     @Schema(description = "是否可再领（前端据此置灰按钮）")
     private Boolean canReceive;
 }

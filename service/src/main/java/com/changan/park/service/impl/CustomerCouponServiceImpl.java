@@ -183,7 +183,10 @@ public class CustomerCouponServiceImpl extends ServiceImpl<CustomerCouponMapper,
                     vo.setReceived(received.intValue());
                     vo.setCanReceive(received < t.getPerLimit()); // 前端据此置灰"立即领取"按钮
                     return vo;
-                }).toList();
+                })
+                .sorted(Comparator.comparing(AppCouponTemplateVO::getCanReceive, Comparator.reverseOrder())
+                        .thenComparing(AppCouponTemplateVO::getAmount, Comparator.reverseOrder()))
+                .toList();
     }
 
     private Map<Long, CouponTemplate> getTemplateMap(List<CustomerCoupon> coupons) {
