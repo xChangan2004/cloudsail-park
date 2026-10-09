@@ -52,4 +52,7 @@ public class AppOrderDetailVO {
 
     @Schema(description = "退款时间")
     private LocalDateTime refundTime;
+
+    @Schema(description = "停车时长")
+    private Long duration;
 }

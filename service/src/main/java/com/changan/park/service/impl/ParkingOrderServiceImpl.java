@@ -179,12 +179,9 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
             AppOrderVO vo = BeanUtil.copyProperties(order, AppOrderVO.class);
             vo.setLotName(lotNames.get(order.getLotId()));
             EntryExitRecord record = recordMap.get(order.getRecordId());
-            if (record != null) {
-                LocalDateTime entryTime = record.getEntryTime();
-                LocalDateTime exitTime = record.getExitTime();
+            if (record != null && record.getEntryTime() != null && record.getExitTime() != null) {
                 // 计算进入到出场的相差秒数
-                long seconds = Duration.between(entryTime, exitTime).toSeconds();
-                vo.setDuration(seconds);
+                vo.setDuration(Duration.between(record.getEntryTime(), record.getExitTime()).toSeconds());
             }
             return vo;
         });
@@ -205,16 +202,23 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         // 3.获取停车场名称
         Map<Long, String> lotNames = translateLotNames(List.of(order));
         vo.setLotName(lotNames.get(order.getLotId()));
+        // 4.计算停车时长（秒）
+        EntryExitRecord exitRecord = entryExitRecordMapper.selectById(order.getRecordId());
+        if (exitRecord != null
+                && exitRecord.getEntryTime() != null
+                && exitRecord.getExitTime() != null) {
+            vo.setDuration(Duration.between(exitRecord.getEntryTime(), exitRecord.getExitTime()).toSeconds());
+        }
         if (order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.REFUNDED) {
-            // 4.查询当前订单号已使用的优惠券名称
-            // 4.1.根据订单号获取对应优惠券模板id
+            // 5.查询当前订单号已使用的优惠券名称
+            // 5.1.根据订单号获取对应优惠券模板id
             CustomerCoupon cCoupon = customerCouponService.lambdaQuery()
                     .select(CustomerCoupon::getTemplateId)
                     .eq(CustomerCoupon::getOrderId, id)
                     .eq(CustomerCoupon::getStatus, CustomerCouponStatus.USED)
                     .last("LIMIT 1")
                     .one();
-            // 4.2.根据模板id查询优惠券，获取名称
+            // 5.2.根据模板id查询优惠券，获取名称
             if (cCoupon != null && cCoupon.getTemplateId() != null) {
                 CouponTemplate template = couponTemplateMapper.selectById(cCoupon.getTemplateId());
                 if (template != null) {
@@ -223,7 +227,7 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
             }
         }
         if (order.getStatus() == OrderStatus.REFUNDED) {
-            // 5.查询退款时间，提供页面显示
+            // 6.查询退款时间，提供页面显示
             RefundRecord record = refundRecordMapper.selectOne(new LambdaQueryWrapper<RefundRecord>()
                     .select(RefundRecord::getRefundTime)
                     .eq(RefundRecord::getOrderId, id)
