@@ -4,10 +4,10 @@ import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.internal.util.AlipaySignature;
+import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.request.AlipayTradeRefundRequest;
-import com.alipay.api.request.AlipayTradeWapPayRequest;
+import com.alipay.api.response.AlipayTradeAppPayResponse;
 import com.alipay.api.response.AlipayTradeRefundResponse;
-import com.alipay.api.response.AlipayTradeWapPayResponse;
 import com.changan.common.config.alipay.AlipayProperties;
 import com.changan.common.config.redisson.annotations.Lock;
 import com.changan.common.constants.Constants;
@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -69,7 +70,7 @@ public class PayServiceImpl implements IPayService {
     private final ICustomerCouponService customerCouponService;
 
     /**
-     * 发起支付宝 H5 支付。
+     * 发起支付宝 APP 支付。
      * <p>
      * 每次调用都会关闭旧 PENDING 流水，重新处理优惠券，创建新的 PENDING 流水，
      * 并将新的 paymentNo 作为支付宝 out_trade_no。
@@ -107,43 +108,33 @@ public class PayServiceImpl implements IPayService {
 
         PaymentRecord payment = attempt.payment();
 
-        // 5.发起H5支付
-        AlipayTradeWapPayRequest request = new AlipayTradeWapPayRequest();
+        // 5.发起APP支付
+        AlipayTradeAppPayRequest request = new AlipayTradeAppPayRequest();
         // 5.1.设置异步通知
         request.setNotifyUrl(alipayProperties.getNotifyUrl());
-        // 5.2.设置同步回跳
-        request.setReturnUrl(alipayProperties.getReturnUrl());
-        // 5.3.设置业务参数
+        // 5.2.设置业务参数
         JSONObject bizContent = new JSONObject();
         bizContent.put("out_trade_no", payment.getPaymentNo());
-        bizContent.put("total_amount", payment.getAmount());
+        bizContent.put("total_amount", payment.getAmount().setScale(2, RoundingMode.HALF_UP).toPlainString());
         bizContent.put("subject", "停车费-" + order.getPlateNumber());
-        bizContent.put("product_code", "QUICK_WAP_WAY");
+        bizContent.put("product_code", "QUICK_MSECURITY_PAY");
         bizContent.put("timeout_express", "30m");
         bizContent.put("passback_params", buildPassbackParams(order.getOrderNo(), attempt.couponId()));
         request.setBizContent(bizContent.toJSONString());
-        // 6.调用支付宝，返回支付表单HTML
-        AlipayTradeWapPayResponse response;
+        // 6.调用支付宝，返回支付信息
+        AlipayTradeAppPayResponse response;
         try {
-            response = alipayClient.pageExecute(request);
+            response = alipayClient.sdkExecute(request);
+            if (StrUtil.isBlank(response.getBody())) {
+                markPaymentFailed(payment.getId());
+                throw new BizIllegalException("创建支付失败，请稍后重试");
+            }
+            return response.getBody();
         } catch (AlipayApiException e) {
-            log.error("创建支付宝H5支付结果未知，paymentNo={}", payment.getPaymentNo(), e);
-            throw new BizIllegalException("创建支付失败，请稍后重试");
-        }
-
-        if (!response.isSuccess()) {
+            log.error("创建支付宝APP支付失败，paymentNo={}", payment.getPaymentNo(), e);
             markPaymentFailed(payment.getId());
-            log.error("支付宝H5支付响应异常，paymentNo={}, code={}, subCode={}, subMsg={}",
-                    payment.getPaymentNo(), response.getCode(), response.getSubCode(), response.getSubMsg());
             throw new BizIllegalException("创建支付失败，请稍后重试");
         }
-
-        if (StrUtil.isBlank(response.getBody())) {
-            log.error("支付宝H5支付未返回表单，paymentNo={}", payment.getPaymentNo());
-            throw new BizIllegalException("创建支付失败，请稍后重试");
-        }
-
-        return response.getBody();
     }
 
     /**
