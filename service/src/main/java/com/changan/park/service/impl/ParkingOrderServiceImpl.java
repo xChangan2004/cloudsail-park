@@ -3,22 +3,22 @@ package com.changan.park.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.enums.CustomerCouponStatus;
+import com.changan.common.enums.RefundStatus;
 import com.changan.model.po.*;
 import com.changan.model.query.AppOrderQuery;
 import com.changan.model.vo.*;
-import com.changan.park.mapper.CustomerMapper;
-import com.changan.park.mapper.EntryExitRecordMapper;
-import com.changan.park.mapper.ParkingLotMapper;
-import com.changan.park.mapper.ParkingOrderMapper;
+import com.changan.park.mapper.*;
 import com.changan.park.service.ICustomerCouponService;
 import com.changan.park.service.IParkingOrderService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.OrderStatus;
 import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.query.ParkingOrderQuery;
+import com.changan.park.service.IRefundRecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,6 +50,10 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
     private final ICustomerCouponService customerCouponService;
 
     private final EntryExitRecordMapper entryExitRecordMapper;
+
+    private final CouponTemplateMapper couponTemplateMapper;
+
+    private final RefundRecordMapper refundRecordMapper;
 
     @Override
     public ParkingOrder createExitOrder(EntryExitRecord record, BigDecimal amount) {
@@ -193,14 +197,43 @@ public class ParkingOrderServiceImpl extends ServiceImpl<ParkingOrderMapper, Par
         if (order == null) {
             throw new BizIllegalException("订单不存在");
         }
-        // 2.归属校验：不是自己的订单一律返回“不存在”
+        // 2.不是自己的订单一律返回“不存在”
         if (!order.getCustomerId().equals(customerId)) {
             throw new BizIllegalException("订单不存在");
         }
-        // 3.组装VO
-        Map<Long, String> lotNames = translateLotNames(List.of(order));
         AppOrderDetailVO vo = BeanUtil.copyProperties(order, AppOrderDetailVO.class);
+        // 3.获取停车场名称
+        Map<Long, String> lotNames = translateLotNames(List.of(order));
         vo.setLotName(lotNames.get(order.getLotId()));
+        if (order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.REFUNDED) {
+            // 4.查询当前订单号已使用的优惠券名称
+            // 4.1.根据订单号获取对应优惠券模板id
+            CustomerCoupon cCoupon = customerCouponService.lambdaQuery()
+                    .select(CustomerCoupon::getTemplateId)
+                    .eq(CustomerCoupon::getOrderId, id)
+                    .eq(CustomerCoupon::getStatus, CustomerCouponStatus.USED)
+                    .last("LIMIT 1")
+                    .one();
+            // 4.2.根据模板id查询优惠券，获取名称
+            if (cCoupon != null && cCoupon.getTemplateId() != null) {
+                CouponTemplate template = couponTemplateMapper.selectById(cCoupon.getTemplateId());
+                if (template != null) {
+                    vo.setCouponName(template.getName());
+                }
+            }
+        }
+        if (order.getStatus() == OrderStatus.REFUNDED) {
+            // 5.查询退款时间，提供页面显示
+            RefundRecord record = refundRecordMapper.selectOne(new LambdaQueryWrapper<RefundRecord>()
+                    .select(RefundRecord::getRefundTime)
+                    .eq(RefundRecord::getOrderId, id)
+                    .eq(RefundRecord::getStatus, RefundStatus.SUCCESS)
+                    .orderByDesc(RefundRecord::getRefundTime)
+                    .last("LIMIT 1"));
+            if (record != null) {
+                vo.setRefundTime(record.getRefundTime());
+            }
+        }
         return vo;
     }
 

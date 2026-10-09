@@ -20,6 +20,9 @@ public class AppOrderDetailVO {
     @Schema(description = "出入记录ID（跳转停车详情用）")
     private Long recordId;
 
+    @Schema(description = "停车场ID")
+    private Long lotId;
+
     @Schema(description = "停车场名称")
     private String lotName;
 
@@ -43,4 +46,10 @@ public class AppOrderDetailVO {
 
     @Schema(description = "下单时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "优惠券名称")
+    private String couponName;
+
+    @Schema(description = "退款时间")
+    private LocalDateTime refundTime;
 }
