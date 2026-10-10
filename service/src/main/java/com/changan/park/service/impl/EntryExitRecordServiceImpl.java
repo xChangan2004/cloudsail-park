@@ -186,33 +186,54 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
     }
 
     @Override
-    public MyParkingStatusVO queryMyParkingStatus() {
+    public List<MyParkingStatusVO> queryMyParkingStatus() {
         // 1.查询该用户当前在场的最新记录
         long customerId = StpKit.APP.getLoginIdAsLong();
-        EntryExitRecord record = lambdaQuery()
+        List<EntryExitRecord> records = lambdaQuery()
                 .eq(EntryExitRecord::getCustomerId, customerId)
                 .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
                 .orderByDesc(EntryExitRecord::getEntryTime)
-                .last("LIMIT 1")
-                .one();
-        // 2.不在场，返回parking=false的空状态
-        MyParkingStatusVO vo = new MyParkingStatusVO();
-        if (record == null) {
-            vo.setParking(false);
-            return vo;
+                .list();
+        // 2.查询停车场名称
+        Map<Long, String> lotNames = translateLotNames(records);
+        // 3.按场地缓存启用中的计费规则，避免同一场地重复查库
+        Map<Long, FeeRule> ruleCache = new HashMap<>();
+        LocalDateTime now = LocalDateTime.now();
+        // 4.封装VO
+        List<MyParkingStatusVO> vos = new ArrayList<>(records.size());
+        records.forEach(record -> {
+            MyParkingStatusVO vo = new MyParkingStatusVO();
+            // 4.1.先拷贝同名字段（lotId / plateNumber / entryTime）
+            BeanUtil.copyProperties(record, vo);
+            // 4.2.设置记录ID
+            vo.setRecordId(record.getId());
+            // 4.3.设置停车场名称
+            vo.setLotName(lotNames.get(record.getLotId()));
+            // 4.4.已停时长（秒）
+            vo.setSeconds(Duration.between(record.getEntryTime(), now).toSeconds());
+            // 4.5.预估费用
+            vo.setEstimatedFee(estimateFee(record, now, ruleCache));
+            vos.add(vo);
+        });
+        // 4.返回数据
+        return vos;
+    }
+
+    /**
+     * 预估当前在场车辆的应缴费用。
+     * <p>按「入场时间 → 当前时间」套用该场地启用中的计费规则。</p>
+     * <p>预估费用只是展示项：场地未配置启用规则、或规则类型没有对应策略时返回 null，
+     * 不能让整个「我的停车状态」接口失败。</p>
+     */
+    private BigDecimal estimateFee(EntryExitRecord record, LocalDateTime now, Map<Long, FeeRule> ruleCache) {
+        try {
+            FeeRule rule = ruleCache.computeIfAbsent(record.getLotId(),
+                    feeRuleService::getEnableRuleByLotId);
+            FeeCalculateStrategy strategy = feeStrategyFactory.getStrategy(rule.getRuleType());
+            return strategy.calculate(rule, record.getEntryTime(), now);
+        } catch (Exception e) {
+            return null;
         }
-        // 3.组装VO
-        vo.setParking(true);
-        vo.setRecordId(record.getId());
-        vo.setPlateNumber(record.getPlateNumber());
-        vo.setEntryTime(record.getEntryTime());
-        vo.setParkedMinutes(Duration.between(record.getEntryTime(), LocalDateTime.now()).toMinutes());
-        // 补充停车场名称
-        ParkingLot lot = parkingLotMapper.selectById(record.getLotId());
-        if (lot != null) {
-            vo.setLotName(lot.getName());
-        }
-        return vo;
     }
 
     /**

@@ -28,14 +28,14 @@ public class AppParkingController {
     private final IEntryExitRecordService entryExitRecordService;
 
     @GetMapping("/lots")
-    @Operation(summary = "停车场分页列表（含实时余位，传定位按距离排序）")
+    @Operation(summary = "停车场分页列表")
     public R<PageDTO<AppParkingLotVO>> pageLots(AppParkingLotQuery query) {
         return R.ok(parkingLotService.pageEnabledWithFreeCount(query));
     }
 
     @GetMapping("/status")
     @Operation(summary = "我的停车状态")
-    public R<MyParkingStatusVO> myStatus() {
+    public R<List<MyParkingStatusVO>> myStatus() {
         return R.ok(entryExitRecordService.queryMyParkingStatus());
     }
 }

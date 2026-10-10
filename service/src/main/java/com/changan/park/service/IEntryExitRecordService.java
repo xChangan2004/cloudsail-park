@@ -10,6 +10,8 @@ import com.changan.model.vo.EntryExitRecordPageVO;
 import com.changan.model.vo.ExitBillVO;
 import com.changan.model.vo.MyParkingStatusVO;
 
+import java.util.List;
+
 public interface IEntryExitRecordService extends IService<EntryExitRecord> {
 
     void entry(EntryFormDTO dto);
@@ -18,5 +20,5 @@ public interface IEntryExitRecordService extends IService<EntryExitRecord> {
 
     ExitBillVO exit(ExitFormDTO dto);
 
-    MyParkingStatusVO queryMyParkingStatus();
+    List<MyParkingStatusVO> queryMyParkingStatus();
 }

@@ -15,11 +15,11 @@ public class MyParkingStatusVO implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @Schema(description = "停车状态：null=当前不在场，有值=在场信息")
-    private Boolean parking;
-
-    @Schema(description = "出入场记录ID")
+    @Schema(description = "记录ID")
     private Long recordId;
+
+    @Schema(description = "停车场ID")
+    private Long lotId;
 
     @Schema(description = "停车场名称")
     private String lotName;
@@ -30,9 +30,9 @@ public class MyParkingStatusVO implements Serializable {
     @Schema(description = "入场时间")
     private LocalDateTime entryTime;
 
-    @Schema(description = "已停时长（分钟）")
-    private Long parkedMinutes;
+    @Schema(description = "已停时长（秒）")
+    private Long seconds;
 
-    @Schema(description = "预估费用（预留字段，二期用计费策略试算填充）")
+    @Schema(description = "预估费用")
     private BigDecimal estimatedFee;
 }
