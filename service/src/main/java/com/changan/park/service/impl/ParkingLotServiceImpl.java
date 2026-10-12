@@ -169,7 +169,9 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         GeoResults<RedisGeoCommands.GeoLocation<Object>> results = redisTemplate.opsForGeo()
                 .radius(Constants.Lot.LOT_GEO_KEY,
                         new Circle(new Point(query.getLng().doubleValue(), query.getLat().doubleValue()),
-                                new Distance(query.getRadiusKm().doubleValue(), Metrics.KILOMETERS)));
+                                new Distance(query.getRadiusKm().doubleValue(), Metrics.KILOMETERS)),
+                        RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeDistance()
+                );
         if (results == null || CollUtil.isEmpty(results.getContent())) {
             return PageDTO.empty(0L, 0L);
         }

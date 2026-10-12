@@ -29,9 +29,6 @@ public class AppParkingLotVO implements Serializable {
     @Schema(description = "纬度")
     private BigDecimal latitude;
 
-    @Schema(description = "联系方式")
-    private String contact;
-
     @Schema(description = "总车位数")
     private Integer totalSpaces;
 
