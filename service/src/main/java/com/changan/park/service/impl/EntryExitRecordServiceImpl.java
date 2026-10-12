@@ -194,6 +194,9 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
                 .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
                 .orderByDesc(EntryExitRecord::getEntryTime)
                 .list();
+        if (CollUtil.isEmpty(records)) {
+            return Collections.emptyList();
+        }
         // 2.查询停车场名称
         Map<Long, String> lotNames = translateLotNames(records);
         // 3.按场地缓存启用中的计费规则，避免同一场地重复查库
