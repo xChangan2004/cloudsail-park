@@ -2,7 +2,6 @@ package com.changan.park.controller.app;
 
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
-import com.changan.common.utils.StpKit;
 import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.vo.AppParkingLotVO;
 import com.changan.model.vo.MyParkingStatusVO;
@@ -10,6 +9,7 @@ import com.changan.park.service.IEntryExitRecordService;
 import com.changan.park.service.IParkingLotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,7 +29,7 @@ public class AppParkingController {
 
     @GetMapping("/lots")
     @Operation(summary = "停车场分页列表")
-    public R<PageDTO<AppParkingLotVO>> pageLots(AppParkingLotQuery query) {
+    public R<PageDTO<AppParkingLotVO>> pageLots(@Valid AppParkingLotQuery query) {
         return R.ok(parkingLotService.pageEnabledWithFreeCount(query));
     }
 

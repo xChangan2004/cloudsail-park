@@ -4,11 +4,11 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.constants.Constants;
 import com.changan.common.enums.EntryExitStatus;
-import com.changan.common.utils.GeoUtils;
 import com.changan.model.po.EntryExitRecord;
 import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.vo.AppParkingLotVO;
@@ -85,7 +85,10 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
             return PageDTO.empty(page);
         }
         // 2.查询可用空位
-        records.forEach(r -> r.setFreeSpaces((int) countFreeSpaces(r.getId())));
+        List<Long> lotIds = records.stream().map(ParkingLot::getId).toList();
+        Map<Long, Long> occupiedMap = countOccupiedByLot(lotIds);
+        records.forEach(r -> r.setFreeSpaces(
+                (int) freeSpaces(r.getTotalSpaces(), occupiedMap.getOrDefault(r.getId(), 0L))));
         // 3.返回数据
         return PageDTO.of(page);
     }
@@ -93,14 +96,14 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     @Override
     public ParkingLot queryParkingLotById(Long id) {
         // 1.查询停车场
-        ParkingLot parkingLot = getById(id);
-        if (parkingLot == null) {
+        ParkingLot lot = getById(id);
+        if (lot == null) {
             throw new BadRequestException("停车场不存在");
         }
         // 2.查询可用空位
-        parkingLot.setFreeSpaces((int) countFreeSpaces(id));
+        lot.setFreeSpaces((int) freeSpaces(lot.getTotalSpaces(), countOccupied(lot.getId())));
         // 3.返回数据
-        return parkingLot;
+        return lot;
     }
 
     @Override
@@ -166,23 +169,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
 
     @Override
     public PageDTO<AppParkingLotVO> pageEnabledWithFreeCount(AppParkingLotQuery query) {
-        // 1.带定位+半径：Redis GEO粗筛，拿范围内的ID和距离
-        if (query.getLng() != null && query.getLat() != null && query.getRadiusKm() != null) {
-            return pageByGeo(query);
-        }
-        // 2.带定位无半径：MySQL全量（量小）+ 内存算距离排序
-        if (query.getLng() != null && query.getLat() != null) {
-            return pageByLocation(query);
-        }
-        // 3.无定位：纯SQL分页
-        return pageWithoutLocation(query);
-    }
-
-    /**
-     * GEO路线：GEORADIUS拿ID+距离 → MySQL补status/name过滤 → 以MySQL为准合并 → 排序切页
-     */
-    private PageDTO<AppParkingLotVO> pageByGeo(AppParkingLotQuery query) {
-        // 1.GEORADIUS：中心点+半径，返回member(lotId)和distance
+        // 1.GEO_RADIUS：中心点+半径，返回member(lotId)和distance
         GeoResults<RedisGeoCommands.GeoLocation<Object>> results = redisTemplate.opsForGeo()
                 .radius(Constants.Lot.LOT_GEO_KEY,
                         new Circle(new Point(query.getLng().doubleValue(), query.getLat().doubleValue()),
@@ -206,51 +193,48 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
                 .like(StrUtil.isNotBlank(query.getName()), ParkingLot::getName, query.getName())
                 .list();
 
-        // 3.组装VO：距离取GEO的计算结果，MySQL为准过滤幽灵ID
+        // 3.批量取在场数
+        Map<Long, Long> occupiedMap = countOccupiedByLot(
+                lots.stream().map(ParkingLot::getId).toList());
+
+        // 4.组装VO：距离取GEO的计算结果，MySQL为准过滤幽灵ID
         List<AppParkingLotVO> voList = lots.stream().map(lot -> {
-            AppParkingLotVO vo = buildLotVO(lot);
+            AppParkingLotVO vo = buildLotVO(lot, occupiedMap.getOrDefault(lot.getId(), 0L));
             vo.setDistance(distanceMap.get(lot.getId().toString()));
             return vo;
-        }).sorted(Comparator.comparing(AppParkingLotVO::getDistance)).toList();
+        }).toList();
 
-        // 4.切页
+        // 5.过滤 + 排序
+        voList = filterAndSort(voList, query);
+
+        // 6.切页
         return subPage(voList, query);
     }
 
     /**
-     * 定位路线（无radius）：MySQL全量+内存算距离+排序切页（停车场量小时的最优解）
+     * 过滤 + 排序
      */
-    private PageDTO<AppParkingLotVO> pageByLocation(AppParkingLotQuery query) {
-        List<ParkingLot> lots = lambdaQuery()
-                .eq(ParkingLot::getStatus, CommonStatus.ENABLE)
-                .like(StrUtil.isNotBlank(query.getName()), ParkingLot::getName, query.getName())
-                .list();
-        if (CollUtil.isEmpty(lots)) {
-            return PageDTO.empty(0L, 0L);
+    private List<AppParkingLotVO> filterAndSort(List<AppParkingLotVO> voList, AppParkingLotQuery query) {
+        // 1.只看有空位
+        if (Boolean.TRUE.equals(query.getOnlyFree())) {
+            voList = voList.stream().filter(v -> Boolean.TRUE.equals(v.getHasFree())).toList();
         }
-        List<AppParkingLotVO> voList = lots.stream().map(lot -> {
-            AppParkingLotVO vo = buildLotVO(lot);
-            if (lot.getLongitude() != null && lot.getLatitude() != null) {
-                vo.setDistance(GeoUtils.calcDistance(
-                        query.getLat().doubleValue(), query.getLng().doubleValue(),
-                        lot.getLatitude().doubleValue(), lot.getLongitude().doubleValue()));
-            }
-            return vo;
-        }).sorted(Comparator.comparing(AppParkingLotVO::getDistance,
-                Comparator.nullsLast(Comparator.naturalOrder()))).toList();
-        return subPage(voList, query);
-    }
-
-    /**
-     * 无定位路线：SQL分页，按create_time倒序
-     */
-    private PageDTO<AppParkingLotVO> pageWithoutLocation(AppParkingLotQuery query) {
-        Page<ParkingLot> page = lambdaQuery()
-                .eq(ParkingLot::getStatus, CommonStatus.ENABLE)
-                .like(StrUtil.isNotBlank(query.getName()), ParkingLot::getName, query.getName())
-                .page(query.toMpPageDefaultSortByCreateTimeDesc());
-        List<AppParkingLotVO> voList = page.getRecords().stream().map(this::buildLotVO).toList();
-        return PageDTO.of(page, voList);
+        // 2.排序
+        Comparator<AppParkingLotVO> byDistance = Comparator.comparing(
+                AppParkingLotVO::getDistance, Comparator.nullsLast(Comparator.naturalOrder())
+        );
+        // 2.1.获取排序类型
+        String sortType = StrUtil.blankToDefault(query.getSortType(), "smart");
+        // 2.2.距离排序
+        if ("distance".equals(sortType)) {
+            return voList.stream().sorted(byDistance).toList();
+        }
+        // TODO 2.3.价格排序
+        // 2.4.智能排序
+        return voList.stream()
+                .sorted(Comparator.comparing((AppParkingLotVO v) -> !Boolean.TRUE.equals(v.getHasFree()))
+                        .thenComparing(byDistance))
+                .toList();
     }
 
     /**
@@ -266,27 +250,47 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
                 (long) Math.ceil(total / (double) query.getPageSize()), pageList);
     }
 
+    private static long freeSpaces(Integer totalSpaces, long occupied) {
+        long total = totalSpaces == null ? 0L : totalSpaces;
+        return Math.max(0L, total - occupied);
+    }
+
+    private long countOccupied(Long lotId) {
+        return entryExitRecordMapper.selectCount(new LambdaQueryWrapper<EntryExitRecord>()
+                .eq(EntryExitRecord::getLotId, lotId)
+                .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED));
+    }
+
+    private Map<Long, Long> countOccupiedByLot(List<Long> lotIds) {
+        if (CollUtil.isEmpty(lotIds)) {
+            return Collections.emptyMap();
+        }
+        List<Map<String, Object>> rows = entryExitRecordMapper.selectMaps(
+                new QueryWrapper<EntryExitRecord>()
+                        .select("lot_id AS lotId", "COUNT(*) AS cnt")
+                        .in("lot_id", lotIds)
+                        .eq("status", EntryExitStatus.ENTERED)
+                        .groupBy("lot_id"));
+        Map<Long, Long> occupiedMap = new HashMap<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            Number lotId = (Number) row.get("lotId");
+            Number cnt = (Number) row.get("cnt");
+            if (lotId != null && cnt != null) {
+                occupiedMap.put(lotId.longValue(), cnt.longValue());
+            }
+        }
+        return occupiedMap;
+    }
+
     /**
-     * 组装单个停车场VO（余位来自缓存）
+     * 组装单个停车场VO
      */
-    private AppParkingLotVO buildLotVO(ParkingLot lot) {
+    private AppParkingLotVO buildLotVO(ParkingLot lot, long occupied) {
         AppParkingLotVO vo = BeanUtil.copyProperties(lot, AppParkingLotVO.class);
-        long free = countFreeSpaces(lot.getId());
+        long free = freeSpaces(lot.getTotalSpaces(), occupied);
         vo.setFreeSpaces(free);
         vo.setHasFree(free > 0);
         return vo;
-    }
-
-    private long countFreeSpaces(Long id) {
-        ParkingLot lot = getById(id);
-        if (lot == null || lot.getTotalSpaces() == null) {
-            return 0;
-        }
-        Long occupied = entryExitRecordMapper.selectCount(new LambdaQueryWrapper<EntryExitRecord>()
-                .eq(EntryExitRecord::getLotId, id)
-                .eq(EntryExitRecord::getStatus, EntryExitStatus.ENTERED)
-        );
-        return Math.max(0, lot.getTotalSpaces() - occupied);
     }
 
     private void syncGeo(ParkingLot lot) {
