@@ -22,7 +22,9 @@ import com.changan.common.exceptions.BizIllegalException;
 import com.changan.model.dto.ParkingLotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.geo.*;
 import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,6 +32,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, ParkingLot> implements IParkingLotService {
@@ -37,6 +40,20 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     private final RedisTemplate<String, Object> redisTemplate;
 
     private final EntryExitRecordMapper entryExitRecordMapper;
+
+    /**
+     * 启动时全量重建 GEO 索引。
+     */
+    @PostConstruct
+    public void rebuildGeoIndex() {
+        try {
+            List<ParkingLot> lots = list();
+            lots.forEach(this::syncGeo);
+            log.info("停车场 GEO 索引重建完成，共 {} 条", lots.size());
+        } catch (Exception e) {
+            log.error("停车场 GEO 索引构建失败", e);
+        }
+    }
 
     @Override
     public void saveParkingLot(ParkingLotFormDTO dto) {
