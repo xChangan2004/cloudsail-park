@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.utils.StpKit;
+import com.changan.model.vo.AppRecordDetailVO;
 import com.changan.model.vo.MyParkingStatusVO;
 import com.changan.park.mapper.*;
 import com.changan.park.service.IEntryExitRecordService;
@@ -220,6 +221,37 @@ public class EntryExitRecordServiceImpl extends ServiceImpl<EntryExitRecordMappe
         });
         // 4.返回数据
         return vos;
+    }
+
+    @Override
+    public AppRecordDetailVO queryRecordById(Long id) {
+        // 1.查询记录
+        EntryExitRecord record = getById(id);
+        long customerId = StpKit.APP.getLoginIdAsLong();
+        // 2.不是自己的记录一律当「不存在」
+        if (record == null || !Long.valueOf(customerId).equals(record.getCustomerId())) {
+            throw new BizIllegalException("记录不存在");
+        }
+        // 3.查停车场信息
+        Long lotId = record.getLotId();
+        ParkingLot lot = parkingLotMapper.selectById(lotId);
+        AppRecordDetailVO vo = BeanUtil.copyProperties(record, AppRecordDetailVO.class);
+        if (lot != null) {
+            vo.setLotName(lot.getName());
+            vo.setLotAddress(lot.getAddress());
+            vo.setLotLng(lot.getLongitude());
+            vo.setLotLat(lot.getLatitude());
+        }
+        // 4.已停时长
+        if (record.getEntryTime() != null) {
+            LocalDateTime end = record.getExitTime() != null ? record.getExitTime() : LocalDateTime.now();
+            vo.setSeconds(Duration.between(record.getEntryTime(), end).toSeconds());
+        }
+        // 5.费用预估只在进行中计算
+        if (record.getStatus() == EntryExitStatus.ENTERED) {
+            vo.setEstimatedFee(estimateFee(record, LocalDateTime.now(), new HashMap<>()));
+        }
+        return vo;
     }
 
     /**
