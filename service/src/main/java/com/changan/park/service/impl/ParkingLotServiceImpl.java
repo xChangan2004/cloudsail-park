@@ -10,16 +10,20 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.constants.Constants;
 import com.changan.common.enums.EntryExitStatus;
 import com.changan.model.po.EntryExitRecord;
+import com.changan.model.po.ParkingFacility;
 import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.vo.AppParkingLotVO;
+import com.changan.model.vo.FacilityItemVO;
 import com.changan.park.mapper.EntryExitRecordMapper;
+import com.changan.park.mapper.ParkingFacilityMapper;
 import com.changan.park.mapper.ParkingLotMapper;
+import com.changan.park.service.IParkingFacilityService;
 import com.changan.park.service.IParkingLotService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
 import com.changan.common.exceptions.BadRequestException;
 import com.changan.common.exceptions.BizIllegalException;
-import com.changan.model.dto.ParkingLotFormDTO;
+import com.changan.model.dto.LotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
 import jakarta.annotation.PostConstruct;
@@ -31,6 +35,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,6 +45,8 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     private final RedisTemplate<String, Object> redisTemplate;
 
     private final EntryExitRecordMapper entryExitRecordMapper;
+
+    private final IParkingFacilityService facilityService;
 
     /**
      * 启动时全量重建 GEO 索引。
@@ -56,7 +63,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     }
 
     @Override
-    public void saveParkingLot(ParkingLotFormDTO dto) {
+    public void saveParkingLot(LotFormDTO dto) {
         // 1.校验名称是否重复
         boolean exists = lambdaQuery()
                 .eq(ParkingLot::getName, dto.getName())
@@ -66,6 +73,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         }
         // 2.拷贝数据到PO
         ParkingLot parkingLot = BeanUtil.copyProperties(dto, ParkingLot.class);
+        facilityService.validateCodes(dto.getFacilityCodes());
         // 3.保存停车场信息
         save(parkingLot);
         // 4.将停车场位置同步进Redis GEO中
@@ -107,7 +115,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     }
 
     @Override
-    public void updateParkingLot(ParkingLotFormDTO dto) {
+    public void updateParkingLot(LotFormDTO dto) {
         Long id = dto.getId();
         // 1.查询停车场
         ParkingLot original = getById(id);
@@ -125,6 +133,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         // 3.拷贝新的数据到PO
         ParkingLot parkingLot = new ParkingLot();
         BeanUtil.copyProperties(dto, parkingLot);
+        facilityService.validateCodes(dto.getFacilityCodes());
         // 4.更新停车场信息
         updateById(parkingLot);
         // 5.更新停车场GEO信息
@@ -198,8 +207,9 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
                 lots.stream().map(ParkingLot::getId).toList());
 
         // 4.组装VO：距离取GEO的计算结果，MySQL为准过滤幽灵ID
+        Map<String, FacilityItemVO> facMap = facilityService.codeItemMap();
         List<AppParkingLotVO> voList = lots.stream().map(lot -> {
-            AppParkingLotVO vo = buildLotVO(lot, occupiedMap.getOrDefault(lot.getId(), 0L));
+            AppParkingLotVO vo = buildLotVO(lot, occupiedMap.getOrDefault(lot.getId(), 0L), facMap);
             vo.setDistance(distanceMap.get(lot.getId().toString()));
             return vo;
         }).toList();
@@ -285,11 +295,15 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     /**
      * 组装单个停车场VO
      */
-    private AppParkingLotVO buildLotVO(ParkingLot lot, long occupied) {
+    private AppParkingLotVO buildLotVO(ParkingLot lot, long occupied, Map<String, FacilityItemVO> facMap) {
         AppParkingLotVO vo = BeanUtil.copyProperties(lot, AppParkingLotVO.class);
         long free = freeSpaces(lot.getTotalSpaces(), occupied);
         vo.setFreeSpaces(free);
         vo.setHasFree(free > 0);
+        if (lot.getFacilityCodes() != null) {
+            vo.setFacilities(lot.getFacilityCodes().stream()
+                    .map(facMap::get).filter(Objects::nonNull).toList());
+        }
         return vo;
     }
 

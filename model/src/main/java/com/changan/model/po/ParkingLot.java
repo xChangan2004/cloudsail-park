@@ -2,6 +2,7 @@ package com.changan.model.po;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.changan.common.enums.CommonStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -10,11 +11,12 @@ import lombok.EqualsAndHashCode;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("parking_lot")
 @Schema(name = "停车场实体")
+@TableName(value = "parking_lot", autoResultMap = true)
 public class ParkingLot extends BaseEntity implements Serializable {
 
     @Serial
@@ -44,4 +46,12 @@ public class ParkingLot extends BaseEntity implements Serializable {
     @TableField(exist = false)
     @Schema(description = "可用空位")
     private Integer freeSpaces;
+
+    private String cover;
+
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<String> images;
+
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<String> facilityCodes;
 }

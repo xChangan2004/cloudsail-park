@@ -3,23 +3,21 @@ package com.changan.park.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
-import com.changan.model.dto.ParkingLotFormDTO;
+import com.changan.model.dto.LotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.query.ParkingLotQuery;
 import com.changan.model.vo.AppParkingLotVO;
 
-import java.util.List;
-
 public interface IParkingLotService extends IService<ParkingLot> {
 
-    void saveParkingLot(ParkingLotFormDTO dto);
+    void saveParkingLot(LotFormDTO dto);
 
     PageDTO<ParkingLot> queryParkingLotPage(ParkingLotQuery query);
 
     ParkingLot queryParkingLotById(Long id);
 
-    void updateParkingLot(ParkingLotFormDTO dto);
+    void updateParkingLot(LotFormDTO dto);
 
     void deleteParkingLotById(Long id);
 

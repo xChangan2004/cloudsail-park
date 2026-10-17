@@ -6,6 +6,7 @@ import lombok.Data;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @Schema(description = "用户端停车场信息")
@@ -40,4 +41,10 @@ public class AppParkingLotVO implements Serializable {
 
     @Schema(description = "距离（米），未传定位或该场无坐标时为null")
     private Long distance;
+
+    @Schema(description = "封面图")
+    private String cover;
+
+    @Schema(description = "服务设施")
+    private List<FacilityItemVO> facilities;
 }

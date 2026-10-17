@@ -7,7 +7,7 @@ import com.changan.park.service.IParkingLotService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
-import com.changan.model.dto.ParkingLotFormDTO;
+import com.changan.model.dto.LotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.ParkingLotQuery;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +29,7 @@ public class ParkingLotController {
     @Operation(summary = "新增停车场")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:lot:add")
     @OperLog(type = "停车场", subType = "新增停车场")
-    public R<Void> saveParkingLot(@Valid @RequestBody ParkingLotFormDTO dto) {
+    public R<Void> saveParkingLot(@Valid @RequestBody LotFormDTO dto) {
         parkingLotService.saveParkingLot(dto);
         return R.ok();
     }
@@ -52,7 +52,7 @@ public class ParkingLotController {
     @Operation(summary = "修改停车场")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "parking:lot:edit")
     @OperLog(type = "停车场", subType = "修改停车场")
-    public R<Void> updateParkingLot(@Valid @RequestBody ParkingLotFormDTO dto) {
+    public R<Void> updateParkingLot(@Valid @RequestBody LotFormDTO dto) {
         parkingLotService.updateParkingLot(dto);
         return R.ok();
     }
