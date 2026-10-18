@@ -17,6 +17,7 @@ import com.changan.model.vo.FacilityItemVO;
 import com.changan.park.mapper.EntryExitRecordMapper;
 import com.changan.park.mapper.ParkingFacilityMapper;
 import com.changan.park.mapper.ParkingLotMapper;
+import com.changan.park.service.IFileService;
 import com.changan.park.service.IParkingFacilityService;
 import com.changan.park.service.IParkingLotService;
 import com.changan.common.domain.dto.PageDTO;
@@ -48,6 +49,8 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
 
     private final IParkingFacilityService facilityService;
 
+    private final IFileService fileService;
+
     /**
      * 启动时全量重建 GEO 索引。
      */
@@ -78,6 +81,15 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         save(parkingLot);
         // 4.将停车场位置同步进Redis GEO中
         syncGeo(parkingLot);
+        // 5.标记封面/图集为已使用，防止被临时文件清理任务误删
+        List<String> usedUrls = new ArrayList<>();
+        if (StrUtil.isNotBlank(dto.getCover())) {
+            usedUrls.add(dto.getCover());
+        }
+        if (CollUtil.isNotEmpty(dto.getImages())) {
+            usedUrls.addAll(dto.getImages());
+        }
+        fileService.markUsed(usedUrls);
     }
 
     @Override
@@ -131,14 +143,39 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
             throw new BizIllegalException("停车场名称已存在");
         }
         // 3.拷贝新的数据到PO
-        ParkingLot parkingLot = new ParkingLot();
-        BeanUtil.copyProperties(dto, parkingLot);
+        ParkingLot lot = BeanUtil.copyProperties(dto, ParkingLot.class);
         facilityService.validateCodes(dto.getFacilityCodes());
         // 4.更新停车场信息
-        updateById(parkingLot);
+        updateById(lot);
         // 5.更新停车场GEO信息
         redisTemplate.opsForGeo().remove(Constants.Lot.LOT_GEO_KEY, id.toString());
-        syncGeo(parkingLot);
+        syncGeo(lot);
+        // 6.本次提交的图片集合
+        Set<String> currentUrls = new HashSet<>();
+        if (StrUtil.isNotBlank(dto.getCover())) {
+            currentUrls.add(dto.getCover());
+        }
+        if (CollUtil.isNotEmpty(dto.getImages())) {
+            dto.getImages().stream()
+                    .filter(StrUtil::isNotBlank)
+                    .forEach(currentUrls::add);
+        }
+        // 7.旧有新无 = 被移出的图，释放引用（USED → TEMP，24 小时后由定时任务真删）
+        Set<String> releasedUrls = new HashSet<>();
+        if (StrUtil.isNotBlank(original.getCover())) {
+            releasedUrls.add(original.getCover());
+        }
+        if (CollUtil.isNotEmpty(original.getImages())) {
+            original.getImages().stream()
+                    .filter(StrUtil::isNotBlank)
+                    .forEach(releasedUrls::add);
+        }
+        releasedUrls.removeAll(currentUrls);
+        if (CollUtil.isNotEmpty(releasedUrls)) {
+            fileService.release(releasedUrls);
+        }
+        // 8.新图标记为已使用，防止被临时文件清理任务误删
+        fileService.markUsed(currentUrls);
     }
 
     @Override
@@ -152,9 +189,20 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         if (parkingLot.getStatus() == CommonStatus.ENABLE) {
             throw new BizIllegalException("启用状态下不可删除");
         }
-        // 3.删除停车场
+        // 3.释放封面/图集引用，24 小时后由定时任务回收
+        Set<String> urls = new HashSet<>();
+        if (StrUtil.isNotBlank(parkingLot.getCover())) {
+            urls.add(parkingLot.getCover());
+        }
+        if (CollUtil.isNotEmpty(parkingLot.getImages())) {
+            urls.addAll(parkingLot.getImages());
+        }
+        if (CollUtil.isNotEmpty(urls)) {
+            fileService.release(urls);
+        }
+        // 4.删除停车场
         removeById(id);
-        // 4.删除GEO索引
+        // 5.删除GEO索引
         redisTemplate.opsForGeo().remove(Constants.Lot.LOT_GEO_KEY, id.toString());
     }
 

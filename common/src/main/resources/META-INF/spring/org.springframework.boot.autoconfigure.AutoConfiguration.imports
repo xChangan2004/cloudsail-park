@@ -8,3 +8,5 @@ com.changan.common.exceptions.GlobalExceptionHandler
 com.changan.common.config.ThreadPoolConfig
 com.changan.common.config.alipay.AlipayConfig
 com.changan.common.config.alipay.AlipayProperties
+com.changan.common.config.oss.OssConfig
+com.changan.common.config.oss.OssProperties

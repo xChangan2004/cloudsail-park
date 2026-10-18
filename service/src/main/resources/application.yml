@@ -37,6 +37,10 @@ server:
         record-request-start-time: true
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
   mvc:
     format:
       date-time: yyyy-MM-dd HH:mm:ss
@@ -111,6 +115,19 @@ alipay:
   signType: RSA2
   charset: UTF-8
   gatewayUrl: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+
+# 阿里云 OSS 配置
+aliyun:
+  oss:
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    region: cn-hangzhou
+    bucket: cloudsail-park
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
+    # 自定义域名/CDN，留空则用 https://{bucket}.{endpoint}
+    public-domain:
+    max-size: 10485760
+    allow-ext: [ jpg, jpeg, png, webp, gif ]
 
 # 停车场相关配置
 parking:

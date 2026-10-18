@@ -41,6 +41,7 @@
         <redisson.version>3.37.0</redisson.version>
         <alipay.version>4.34.8.ALL</alipay.version>
         <easyexcel.version>4.0.3</easyexcel.version>
+        <aliyunoss.version>0.6.0</aliyunoss.version>
     </properties>
 
     <dependencyManagement>
@@ -104,6 +105,11 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>easyexcel</artifactId>
                 <version>${easyexcel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>alibabacloud-oss-v2</artifactId>
+                <version>${aliyunoss.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
