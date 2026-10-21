@@ -24,7 +24,11 @@ public class RefundRecord extends BaseEntity {
     @Schema(description = "退款单号")
     private String refundNo;
 
-    @Schema(description = "第三方退款流水号")
+    /**
+     * 渠道侧关联号：支付宝为交易号 trade_no（退款不产生新交易，与支付流水的 transaction_id 相同），
+     * 微信为退款单号 refund_id。渠道退款的唯一标识是「该号 + refundNo（out_request_no）」。
+     */
+    @Schema(description = "渠道侧关联号：支付宝为交易号 trade_no，微信为退款单号 refund_id")
     private String channelRefundNo;
 
     @Schema(description = "退款金额")

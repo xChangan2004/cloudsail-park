@@ -568,7 +568,12 @@ public class PayServiceImpl implements IPayService {
         // 5.调用支付宝退款
         AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
         JSONObject bizContent = new JSONObject();
-        bizContent.put("out_trade_no", payment.getPaymentNo());
+        // 优先用支付宝交易号：部分环境（含沙箱）按 out_trade_no 检索不到交易
+        if (StrUtil.isNotBlank(payment.getTransactionId())) {
+            bizContent.put("trade_no", payment.getTransactionId());
+        } else {
+            bizContent.put("out_trade_no", payment.getPaymentNo());
+        }
         bizContent.put("refund_amount", refund.getAmount());
         bizContent.put("out_request_no", refundNo);         // 幂等键
         bizContent.put("refund_reason", refundReason);   // 退款原因
@@ -601,9 +606,11 @@ public class PayServiceImpl implements IPayService {
         }
 
         // 6. 支付宝退款成功，更新退款记录和订单状态
-        String channelRefundNo = StrUtil.isBlank(response.getRefundSettlementId())
-                ? null
-                : response.getRefundSettlementId();
+        // 支付宝没有独立的退款单号，refund_settlement_id 只在银行间联场景返回；
+        // 退款不会产生新交易，响应里的 trade_no 就是原支付交易号，这里落库便于和支付流水对上
+        String channelRefundNo = StrUtil.isNotBlank(response.getTradeNo())
+                ? response.getTradeNo()
+                : payment.getTransactionId();
 
         LocalDateTime refundTime = response.getGmtRefundPay() == null
                 ? LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
