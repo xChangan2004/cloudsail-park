@@ -2,6 +2,7 @@ package com.changan.park.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.changan.common.constants.Constants;
+import com.changan.model.vo.PaymentRecordDetailVO;
 import com.changan.park.service.IPaymentRecordService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,5 +29,12 @@ public class PaymentRecordController {
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "pay:payment:list")
     public R<PageDTO<PaymentRecordVO>> queryPaymentRecordPage(PaymentRecordQuery query) {
         return R.ok(paymentRecordService.queryPaymentRecordPage(query));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "查询支付记录详情")
+    @SaCheckPermission(type = Constants.Admin.TYPE, value = "pay:payment:list")
+    public R<PaymentRecordDetailVO> queryPaymentRecordDetail(@PathVariable Long id) {
+        return R.ok(paymentRecordService.queryPaymentRecordDetail(id));
     }
 }

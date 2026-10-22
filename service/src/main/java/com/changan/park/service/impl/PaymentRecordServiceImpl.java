@@ -5,6 +5,8 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.exceptions.BizIllegalException;
+import com.changan.model.vo.PaymentRecordDetailVO;
 import com.changan.park.mapper.PaymentRecordMapper;
 import com.changan.park.service.IParkingOrderService;
 import com.changan.park.service.IPaymentRecordService;
@@ -16,9 +18,7 @@ import com.changan.model.vo.PaymentRecordVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,6 +61,20 @@ public class PaymentRecordServiceImpl extends ServiceImpl<PaymentRecordMapper, P
         Map<Long, ParkingOrder> orderMap = parkingOrderService.listByIds(orderIds)
                 .stream()
                 .collect(Collectors.toMap(ParkingOrder::getId, Function.identity()));
+        // 3.1.算同一订单的支付尝试序号
+        List<PaymentRecord> allOfOrders = lambdaQuery()
+                .select(PaymentRecord::getId, PaymentRecord::getOrderId, PaymentRecord::getCreateTime)
+                .in(PaymentRecord::getOrderId, orderIds)
+                .orderByAsc(PaymentRecord::getCreateTime)
+                .orderByAsc(PaymentRecord::getId)
+                .list();
+        Map<Long, Integer> attemptSeq = new HashMap<>();
+        Map<Long, Integer> attemptTotal = new HashMap<>();
+        for (PaymentRecord p : allOfOrders) {
+            int seq = attemptTotal.merge(p.getOrderId(), 1, Integer::sum);
+            attemptSeq.put(p.getId(), seq);
+        }
+
         // 4.组装VO
         return PageDTO.of(page, record -> {
             PaymentRecordVO vo = BeanUtil.copyProperties(record, PaymentRecordVO.class);
@@ -69,7 +83,45 @@ public class PaymentRecordServiceImpl extends ServiceImpl<PaymentRecordMapper, P
                 vo.setOrderNo(order.getOrderNo());
                 vo.setPlateNumber(order.getPlateNumber());
             }
+            vo.setAttemptNo(attemptSeq.get(record.getId()));
+            vo.setAttemptTotal(attemptTotal.get(record.getOrderId()));
             return vo;
         });
+    }
+
+    @Override
+    public PaymentRecordDetailVO queryPaymentRecordDetail(Long id) {
+        // 1.支付流水本体
+        PaymentRecord record = getById(id);
+        if (record == null) {
+            throw new BizIllegalException("支付流水不存在");
+        }
+        PaymentRecordDetailVO vo = BeanUtil.copyProperties(record, PaymentRecordDetailVO.class);
+
+        // 2.同一订单的支付尝试序号
+        List<PaymentRecord> siblings = lambdaQuery()
+                .select(PaymentRecord::getId, PaymentRecord::getCreateTime)
+                .eq(PaymentRecord::getOrderId, record.getOrderId())
+                .orderByAsc(PaymentRecord::getCreateTime)
+                .orderByAsc(PaymentRecord::getId)
+                .list();
+        int index = -1;
+        for (int i = 0; i < siblings.size(); i++) {
+            if (Objects.equals(siblings.get(i).getId(), record.getId())) {
+                index = i;
+                break;
+            }
+        }
+        vo.setAttemptNo(index >= 0 ? index + 1 : 1);
+        vo.setAttemptTotal(siblings.size());
+
+        // 3.订单信息
+        ParkingOrder order = parkingOrderService.getById(record.getOrderId());
+        if (order != null) {
+            vo.setOrderNo(order.getOrderNo());
+            vo.setPlateNumber(order.getPlateNumber());
+        }
+
+        return vo;
     }
 }

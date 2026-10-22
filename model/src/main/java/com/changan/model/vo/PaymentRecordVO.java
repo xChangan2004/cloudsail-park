@@ -24,9 +24,6 @@ public class PaymentRecordVO {
     @Schema(description = "商户支付单号")
     private String paymentNo;
 
-    @Schema(description = "第三方交易流水号")
-    private String transactionId;
-
     @Schema(description = "支付方式")
     private PayMethod payMethod;
 
@@ -36,12 +33,12 @@ public class PaymentRecordVO {
     @Schema(description = "状态")
     private PaymentStatus status;
 
-    @Schema(description = "支付时间")
-    private LocalDateTime payTime;
-
-    @Schema(description = "回调时间")
-    private LocalDateTime callbackTime;
-
-    @Schema(description = "创建时间")
+    @Schema(description = "发起时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "该订单的第几次支付尝试")
+    private Integer attemptNo;
+
+    @Schema(description = "该订单共几次支付尝试")
+    private Integer attemptTotal;
 }
