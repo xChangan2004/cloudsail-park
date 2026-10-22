@@ -29,6 +29,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -266,10 +267,13 @@ public class PayServiceImpl implements IPayService {
             return;
         }
 
+        LocalDateTime now = LocalDateTime.now();
         boolean updated = paymentRecordService.lambdaUpdate()
                 .eq(PaymentRecord::getId, paymentId)
                 .eq(PaymentRecord::getStatus, PaymentStatus.PENDING)
                 .set(PaymentRecord::getStatus, targetStatus)
+                .set(PaymentRecord::getCloseTime, now)
+                .set(PaymentRecord::getUpdateTime, now)
                 .update();
 
         if (!updated) {
@@ -717,13 +721,16 @@ public class PayServiceImpl implements IPayService {
 
         CustomerCoupon coupon = validateCallbackCoupon(callbackContext.couponId(), order, payAmount);
         LocalDateTime notifyTime = LocalDateTime.now();
+        LocalDateTime payTime = StrUtil.isBlank(params.get("gmt_payment"))
+                ? notifyTime
+                : LocalDateTime.parse(params.get("gmt_payment"), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         boolean paymentUpdated = paymentRecordService.lambdaUpdate()
                 .eq(PaymentRecord::getId, payment.getId())
                 .eq(PaymentRecord::getStatus, PaymentStatus.PENDING)
                 .set(PaymentRecord::getStatus, PaymentStatus.PAID)
                 .set(PaymentRecord::getTransactionId, tradeNo)
-                .set(PaymentRecord::getPayTime, notifyTime)
+                .set(PaymentRecord::getPayTime, payTime)
                 .set(PaymentRecord::getCallbackTime, notifyTime)
                 .set(PaymentRecord::getCallbackContent, JSONObject.toJSONString(params))
                 .update();

@@ -45,6 +45,9 @@ public class PaymentRecord extends BaseEntity implements Serializable {
     @Schema(description = "回调时间")
     private LocalDateTime callbackTime;
 
+    @Schema(description = "关闭时间")
+    private LocalDateTime closeTime;
+
     @Schema(description = "回调内容（JSON）")
     private String callbackContent;
 }
