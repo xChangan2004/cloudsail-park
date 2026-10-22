@@ -88,7 +88,9 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
             return "分时段计费";
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("免费").append(rule.getFreeMinutes()).append("分钟，");
+        if (hasFreeMinutes(rule)) {
+            sb.append("免费").append(rule.getFreeMinutes()).append("分钟，");
+        }
         List<FeeRule.TimeSegment> segments = new ArrayList<>(rule.getTimeSegments());
         segments.sort(Comparator.comparing(FeeRule.TimeSegment::getStart));
         for (int i = 0; i < segments.size(); i++) {
@@ -96,11 +98,16 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
             if (i > 0) {
                 sb.append("，");
             }
-            sb.append(seg.getStart()).append("-").append(seg.getEnd())
-                    .append("每小时").append(seg.getRate()).append("元");
+            sb.append(seg.getStart()).append("-");
+            // 结束时间早于开始时间说明跨天，补个“次日”更好懂
+            if (toMinutes(seg.getEnd()) < toMinutes(seg.getStart())) {
+                sb.append("次日");
+            }
+            sb.append(seg.getEnd()).append(" ").append(formatMoney(seg.getRate())).append("元/小时");
         }
+        sb.append("，按分钟计费");
         if (hasDailyCap(rule)) {
-            sb.append("，单日封顶").append(rule.getDailyCap()).append("元");
+            sb.append("，每24小时封顶").append(formatMoney(rule.getDailyCap())).append("元");
         }
         return sb.toString();
     }

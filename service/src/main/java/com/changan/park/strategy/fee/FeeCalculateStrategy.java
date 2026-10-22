@@ -5,6 +5,7 @@ import com.changan.model.dto.FeeRuleFormDTO;
 import com.changan.model.po.FeeRule;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 /**
@@ -85,5 +86,19 @@ public interface FeeCalculateStrategy {
      */
     default boolean hasDailyCap(FeeRule rule) {
         return rule.getDailyCap() != null && rule.getDailyCap().compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    /**
+     * 是否配置了免费时长
+     */
+    default boolean hasFreeMinutes(FeeRule rule) {
+        return rule.getFreeMinutes() != null && rule.getFreeMinutes() > 0;
+    }
+
+    /**
+     * 金额文案：统一保留两位小数，避免出现 5.0 元 / 8 元 这类不统一展示
+     */
+    default String formatMoney(BigDecimal amount) {
+        return amount == null ? "0.00" : amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 }

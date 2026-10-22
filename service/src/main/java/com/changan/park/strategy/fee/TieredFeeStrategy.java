@@ -99,26 +99,36 @@ public class TieredFeeStrategy implements FeeCalculateStrategy {
 
     @Override
     public String getRuleDesc(FeeRule rule) {
-        if (CollUtil.isEmpty(rule.getTiers())) {
+        List<FeeRule.Tier> tiers = rule.getTiers();
+        if (CollUtil.isEmpty(tiers)) {
             return "阶梯计费";
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("免费").append(rule.getFreeMinutes()).append("分钟，");
-        List<FeeRule.Tier> tiers = rule.getTiers();
+        if (hasFreeMinutes(rule)) {
+            sb.append("免费").append(rule.getFreeMinutes()).append("分钟，超出后：");
+        }
+        // 每档的起点是上一档的结束分钟数，最后一档没有结束时间表示“之后不限”
+        int prevEnd = 0;
         for (int i = 0; i < tiers.size(); i++) {
             FeeRule.Tier tier = tiers.get(i);
+            Integer end = tier.getEndMinutes();
             if (i > 0) {
                 sb.append("，");
             }
-            if (tier.getEndMinutes() == null) {
-                sb.append("之后每小时").append(tier.getRate()).append("元");
+            if (end == null) {
+                sb.append(prevEnd > 0 ? prevEnd + "分钟以上" : "全部时长");
+            } else if (prevEnd > 0) {
+                sb.append(prevEnd).append("~").append(end).append("分钟");
             } else {
-                sb.append(i == 0 ? "前" : "").append(tier.getEndMinutes()).append("分钟内每小时")
-                        .append(tier.getRate()).append("元");
+                sb.append("前").append(end).append("分钟");
+            }
+            sb.append(formatMoney(tier.getRate())).append("元/小时");
+            if (end != null) {
+                prevEnd = end;
             }
         }
         if (hasDailyCap(rule)) {
-            sb.append("，单日封顶").append(rule.getDailyCap()).append("元");
+            sb.append("，每24小时封顶").append(formatMoney(rule.getDailyCap())).append("元");
         }
         return sb.toString();
     }

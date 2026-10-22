@@ -47,11 +47,14 @@ public class StandardFeeStrategy implements FeeCalculateStrategy {
     @Override
     public String getRuleDesc(FeeRule rule) {
         StringBuilder sb = new StringBuilder();
-        sb.append("免费").append(rule.getFreeMinutes()).append("分钟，");
-        sb.append("首小时").append(rule.getFirstHourRate()).append("元，");
-        sb.append("之后每小时").append(rule.getAdditionalRate()).append("元");
+        if (hasFreeMinutes(rule)) {
+            sb.append("免费").append(rule.getFreeMinutes()).append("分钟，");
+        }
+        sb.append("首小时").append(formatMoney(rule.getFirstHourRate())).append("元，");
+        sb.append("之后").append(formatMoney(rule.getAdditionalRate())).append("元/小时，");
+        sb.append("不足1小时按1小时计");
         if (hasDailyCap(rule)) {
-            sb.append("，单日封顶").append(rule.getDailyCap()).append("元");
+            sb.append("，每24小时封顶").append(formatMoney(rule.getDailyCap())).append("元");
         }
         return sb.toString();
     }
