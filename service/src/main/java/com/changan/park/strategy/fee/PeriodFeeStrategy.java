@@ -48,7 +48,7 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
     }
 
     @Override
-    public BigDecimal calculate(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
+    public BigDecimal calculateRaw(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
         long totalMinutes = Duration.between(entryTime, exitTime).toMinutes();
         // 1.免费时长内
         if (totalMinutes <= rule.getFreeMinutes()) {
@@ -61,6 +61,11 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
         while (cursor.isBefore(exitTime)) {
             // 根据当前cursor时刻，找到属于哪个收费时段（支持跨天时段）
             FeeRule.TimeSegment seg = findSegment(rule.getTimeSegments(), cursor);
+            // 落在时段空隙里：空隙时间不计费，直接跳到下一个时段的开始时刻
+            if (seg == null) {
+                cursor = nextSegmentStart(cursor, rule.getTimeSegments(), exitTime);
+                continue;
+            }
             // 算出该时段在时间轴上真实结束时刻（自动处理跨天+1天）
             LocalDateTime segEnd = segmentEndTime(cursor, seg);
             // 本段计费截止时间 = 时段结束 与 出场时间 的较早者
@@ -73,8 +78,8 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
             // 游标跳到本段末尾，继续处理下一段
             cursor = chargeEnd;
         }
-        // 3.执行单日封顶逻辑：min(计算出来总费用，单日封顶 × 向上取整停车天数)
-        return applyDailyCap(fee, rule, totalMinutes);
+        // 3.单日封顶由 FeeCalculateStrategy#calculate 统一按 24 小时分段处理
+        return fee;
     }
 
     @Override
@@ -121,7 +126,7 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
     }
 
     /**
-     * 找到指定时间所属的时段（支持跨天时段，如 20:00-08:00）
+     * 找到指定时间所属的时段（支持跨天时段，如 20:00-08:00），未命中返回 null 表示处于不计费空隙
      */
     private FeeRule.TimeSegment findSegment(List<FeeRule.TimeSegment> segments, LocalDateTime time) {
         // 把当前时间，换算成当天从0点开始的总分钟数。例：08:30 → 8*60+30 = 510 分钟
@@ -140,7 +145,31 @@ public class PeriodFeeStrategy implements FeeCalculateStrategy {
                     return minute >= s && minute < e;
                 })
                 .findFirst()
-                .orElseThrow(() -> new BizIllegalException("时段配置未覆盖停车时间"));
+                .orElse(null);
+    }
+
+    /**
+     * 找到严格晚于当前时刻的下一个时段开始时间，用于跳过不计费的空隙。
+     * <p>找不到或已超过出场时间时返回出场时间，保证游标一定前进、不会死循环。</p>
+     */
+    private LocalDateTime nextSegmentStart(LocalDateTime time,
+                                           List<FeeRule.TimeSegment> segments,
+                                           LocalDateTime exitTime) {
+        LocalDateTime next = null;
+        for (FeeRule.TimeSegment seg : segments) {
+            LocalDateTime start = time.toLocalDate().atTime(LocalTime.parse(seg.getStart()));
+            // 当天该时段已经开始过，说明下一轮要等到明天同一时刻
+            if (!start.isAfter(time)) {
+                start = start.plusDays(1);
+            }
+            if (next == null || start.isBefore(next)) {
+                next = start;
+            }
+        }
+        if (next == null || next.isAfter(exitTime)) {
+            return exitTime;
+        }
+        return next;
     }
 
     /**

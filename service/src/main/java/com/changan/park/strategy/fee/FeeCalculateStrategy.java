@@ -27,13 +27,50 @@ public interface FeeCalculateStrategy {
 
     /**
      * 计算停车费用（出场时调用）
+     * <p>先算原始费用，再以「连续 24 小时」为一段逐段应用单日封顶后累加。</p>
      *
      * @param rule      计费规则
      * @param entryTime 入场时间
      * @param exitTime  出场时间
      * @return 停车费用
      */
-    BigDecimal calculate(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime);
+    default BigDecimal calculate(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
+        if (!exitTime.isAfter(entryTime)) {
+            return BigDecimal.ZERO;
+        }
+        if (!hasDailyCap(rule)) {
+            return calculateRaw(rule, entryTime, exitTime);
+        }
+        // 不能直接对总费用做 min(总费用, 封顶 × 天数)：
+        // 停车 24 小时零 1 分钟时天数会从 1 跳到 2，费用在临界点直接突变。
+        // 这里以入场时间起算的连续 24 小时为一段，每段增量费用单独封顶后累加。
+        BigDecimal cap = rule.getDailyCap();
+        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal prevRaw = BigDecimal.ZERO;
+        LocalDateTime cursor = entryTime;
+        while (cursor.isBefore(exitTime)) {
+            LocalDateTime windowEnd = cursor.plusDays(1);
+            if (windowEnd.isAfter(exitTime)) {
+                windowEnd = exitTime;
+            }
+            BigDecimal raw = calculateRaw(rule, entryTime, windowEnd);
+            BigDecimal windowFee = raw.subtract(prevRaw).max(BigDecimal.ZERO).min(cap);
+            total = total.add(windowFee);
+            prevRaw = raw;
+            cursor = windowEnd;
+        }
+        return total;
+    }
+
+    /**
+     * 计算不考虑单日封顶的原始费用
+     *
+     * @param rule      计费规则
+     * @param entryTime 入场时间
+     * @param exitTime  出场时间
+     * @return 原始停车费用
+     */
+    BigDecimal calculateRaw(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime);
 
     /**
      * 生成规则的展示文案
@@ -48,22 +85,5 @@ public interface FeeCalculateStrategy {
      */
     default boolean hasDailyCap(FeeRule rule) {
         return rule.getDailyCap() != null && rule.getDailyCap().compareTo(BigDecimal.ZERO) > 0;
-    }
-
-    /**
-     * 单日封顶：费用与（封顶价 × 停车天数）取较小值
-     * @param fee 原始计算费用
-     * @param rule 规则
-     * @param totalMinutes 总停车分钟（入场到出场）
-     * @return 封顶后费用
-     */
-    default BigDecimal applyDailyCap(BigDecimal fee, FeeRule rule, long totalMinutes) {
-        // 如果没有配置有效的单日封顶，直接返回原始计算出来的费用，不做处理
-        if (!hasDailyCap(rule)) {
-            return fee;
-        }
-        // totalMinutes总停车分钟，向上取整得到停车天数（按连续停车时长算天数，不是自然日历天）
-        long days = (totalMinutes + 1439) / 1440;// 向上取整天数
-        return fee.min(rule.getDailyCap().multiply(BigDecimal.valueOf(days)));
     }
 }

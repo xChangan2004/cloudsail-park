@@ -55,7 +55,7 @@ public class TieredFeeStrategy implements FeeCalculateStrategy {
     }
 
     @Override
-    public BigDecimal calculate(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
+    public BigDecimal calculateRaw(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
         // 1、计算停车总时长（单位：分钟，丢弃秒部分）
         long totalMinutes = Duration.between(entryTime, exitTime).toMinutes();
         // 2、总停车时长小于等于免费时长，直接0元
@@ -93,8 +93,8 @@ public class TieredFeeStrategy implements FeeCalculateStrategy {
                 break;
             }
         }
-        // 5、应用单日封顶逻辑：计算出来的费用不能超过单日封顶金额
-        return applyDailyCap(fee, rule, totalMinutes);
+        // 5、单日封顶由 FeeCalculateStrategy#calculate 统一按 24 小时分段处理
+        return fee;
     }
 
     @Override

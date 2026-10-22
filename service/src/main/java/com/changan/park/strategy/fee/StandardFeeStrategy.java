@@ -30,7 +30,7 @@ public class StandardFeeStrategy implements FeeCalculateStrategy {
     }
 
     @Override
-    public BigDecimal calculate(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
+    public BigDecimal calculateRaw(FeeRule rule, LocalDateTime entryTime, LocalDateTime exitTime) {
         // 1.计算出场和离场相差的分钟
         long totalMinutes = Duration.between(entryTime, exitTime).toMinutes();
         // 2.免费时间内（0元）
@@ -40,10 +40,8 @@ public class StandardFeeStrategy implements FeeCalculateStrategy {
         // 3.首小时 + 之后每小时（不足1小时按1小时算）
         long billable = totalMinutes - rule.getFreeMinutes();
         long hours = (billable + 59) / 60;
-        BigDecimal fee = rule.getFirstHourRate()
+        return rule.getFirstHourRate()
                 .add(rule.getAdditionalRate().multiply(BigDecimal.valueOf(hours - 1)));
-        // 4.单日封顶
-        return applyDailyCap(fee, rule, totalMinutes);
     }
 
     @Override
