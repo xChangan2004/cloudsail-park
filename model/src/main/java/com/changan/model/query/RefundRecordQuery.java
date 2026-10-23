@@ -1,6 +1,7 @@
 package com.changan.model.query;
 
 import com.changan.common.domain.query.PageQuery;
+import com.changan.common.enums.RefundStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,6 +17,9 @@ public class RefundRecordQuery extends PageQuery {
 
     @Schema(description = "订单号（精确）")
     private String orderNo;
+
+    @Schema(description = "退款状态")
+    private RefundStatus status;
 
     @Schema(description = "退款开始时间")
     private LocalDateTime beginTime;

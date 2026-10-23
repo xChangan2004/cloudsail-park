@@ -45,6 +45,7 @@ public class RefundRecordServiceImpl extends ServiceImpl<RefundRecordMapper, Ref
         // 2.分页查询退款记录
         Page<RefundRecord> page = lambdaQuery()
                 .eq(orderId != null, RefundRecord::getOrderId, orderId)
+                .eq(query.getStatus() != null, RefundRecord::getStatus, query.getStatus())
                 .ge(query.getBeginTime() != null, RefundRecord::getCreateTime, query.getBeginTime())
                 .le(query.getEndTime() != null, RefundRecord::getCreateTime, query.getEndTime())
                 .page(query.toMpPageDefaultSortByCreateTimeDesc());
