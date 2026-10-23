@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum RefundStatus {
+public enum RefundStatus implements BaseEnum {
     PROCESS(0, "处理中"),
     SUCCESS(1, "成功"),
     FAIL(2, "失败");
