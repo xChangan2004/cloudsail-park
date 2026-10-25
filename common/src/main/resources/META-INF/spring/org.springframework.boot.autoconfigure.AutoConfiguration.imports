@@ -10,3 +10,6 @@ com.changan.common.config.alipay.AlipayConfig
 com.changan.common.config.alipay.AlipayProperties
 com.changan.common.config.oss.OssConfig
 com.changan.common.config.oss.OssProperties
+com.changan.common.config.wechat.WechatProperties
+com.changan.common.config.restclient.RestClientConfig
+com.changan.common.utils.WechatUtil

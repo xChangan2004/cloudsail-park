@@ -33,6 +33,7 @@ public class MvcConfig implements WebMvcConfigurer {
             SaRouter.match("/app/**")
                     .notMatch("/app/auth/login")
                     .notMatch("/app/auth/code")
+                    .notMatch("/app/auth/wx/login")
                     .check(r -> StpKit.APP.checkLogin());
 
             // 管理端：除放行名单外，强制校验admin登录（注解校验不受影响，仍并行生效）

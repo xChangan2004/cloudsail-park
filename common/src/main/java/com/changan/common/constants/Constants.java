@@ -106,6 +106,14 @@ public interface Constants {
          * 锁定时长
          */
         Duration BLOCK_MINUTES = Duration.ofMinutes(10);
+        /**
+         * 微信接口调用凭据缓存key
+         */
+        String WX_ACCESS_TOKEN_KEY = "app:wx:access:token";
+        /**
+         * 微信接口调用凭据刷新锁
+         */
+        String WX_ACCESS_TOKEN_LOCK = "app:wx:access:token:lock";
     }
 
     interface Coupon {

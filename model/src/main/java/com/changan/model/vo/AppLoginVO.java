@@ -24,4 +24,7 @@ public class AppLoginVO {
 
     @Schema(description = "是否新注册用户（true=本次登录自动注册）")
     private Boolean isNewUser;
+
+    @Schema(description = "是否需要绑定手机号（true=首次微信登录，尚未绑定手机）")
+    private Boolean needBindPhone;
 }

@@ -129,6 +129,15 @@ aliyun:
     max-size: 10485760
     allow-ext: [ jpg, jpeg, png, webp, gif ]
 
+wechat:
+  app-id: ${WECHAT_APP_ID:}
+  app-secret: ${WECHAT_APP_SECRET:}
+  jscode2session-url: https://api.weixin.qq.com/sns/jscode2session
+  access-token-url: https://api.weixin.qq.com/cgi-bin/token
+  phone-number-url: https://api.weixin.qq.com/wxa/business/getuserphonenumber
+  connect-timeout: 5
+  read-timeout: 8
+
 # 停车场相关配置
 parking:
   tunnel: https://96fd3a9.r28.cpolar.top # 隧道地址
