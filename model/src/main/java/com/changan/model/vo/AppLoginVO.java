@@ -27,4 +27,7 @@ public class AppLoginVO {
 
     @Schema(description = "是否需要绑定手机号（true=首次微信登录，尚未绑定手机）")
     private Boolean needBindPhone;
+    
+    @Schema(description = "是否已绑定微信")
+    private Boolean bindWx;
 }

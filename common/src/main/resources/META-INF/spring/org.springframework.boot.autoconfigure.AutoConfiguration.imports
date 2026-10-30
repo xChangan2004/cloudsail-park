@@ -13,3 +13,4 @@ com.changan.common.config.oss.OssProperties
 com.changan.common.config.wechat.WechatProperties
 com.changan.common.config.restclient.RestClientConfig
 com.changan.common.utils.WechatUtil
+com.changan.common.utils.RateLimitUtil

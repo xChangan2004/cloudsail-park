@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.changan.common.constants.Constants;
 import com.changan.common.enums.CommonStatus;
 import com.changan.common.exceptions.BizIllegalException;
+import com.changan.common.utils.RateLimitUtil;
 import com.changan.common.utils.StpKit;
 import com.changan.common.utils.WechatUtil;
 import com.changan.model.dto.AppLoginDTO;
@@ -35,11 +36,10 @@ public class AuthServiceImpl implements IAuthService {
     private final CustomerMapper customerMapper;
 
     private final RedisTemplate<String, Object> redisTemplate;
+
     private final WechatUtil wechatUtil;
-    private final ParkingOrderMapper parkingOrderMapper;
-    private final CustomerPlateMapper customerPlateMapper;
-    private final CustomerCouponMapper customerCouponMapper;
-    private final EntryExitRecordMapper entryExitRecordMapper;
+
+    private final RateLimitUtil rateLimitUtil;
 
     @Override
     public AppLoginVO login(AppLoginDTO dto) {
@@ -226,6 +226,7 @@ public class AuthServiceImpl implements IAuthService {
         vo.setCustomerId(customer.getId());
         vo.setIsNewUser(isNewUser);
         vo.setNeedBindPhone(StrUtil.isBlank(customer.getPhone()));
+        vo.setBindWx(!StrUtil.isBlank(customer.getOpenid()));
         return vo;
     }
 
@@ -281,9 +282,9 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public void code(String phone) {
         // 1.限频，规定时间内只允许发送一条
-        Boolean first = redisTemplate.opsForValue()
-                .setIfAbsent(Constants.App.LIMIT_KEY_PREFIX + phone, "1", Constants.App.SEND_INTERVAL);
-        if (Boolean.FALSE.equals(first)) {
+        String key = Constants.App.LIMIT_KEY_PREFIX + phone;
+        boolean allowed = rateLimitUtil.tryAcquire(key, 1, Constants.App.SEND_INTERVAL);
+        if (!allowed) {
             throw new BizIllegalException("发送太频繁，请" + Constants.App.SEND_INTERVAL.toSeconds() + "秒后再试");
         }
         // 2.生成6位数字验证码，存入Redis并设置有效时间；存储失败则回滚限频key，避免用户白等冷却时间
@@ -293,7 +294,7 @@ public class AuthServiceImpl implements IAuthService {
                     .set(Constants.App.CODE_KEY_PREFIX + phone, code, Constants.App.CODE_TTL);
         } catch (Exception e) {
             log.error("[验证码存储] Redis异常 phone={}", phone, e);
-            redisTemplate.delete(Constants.App.LIMIT_KEY_PREFIX + phone);
+            redisTemplate.delete(key);
             throw new BizIllegalException("系统繁忙，请稍后重试");
         }
         // 3.模拟发送，打印到控制台

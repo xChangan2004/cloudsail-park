@@ -3,6 +3,7 @@ package com.changan.park.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
+import com.changan.model.dto.AppCustomerUpdateDTO;
 import com.changan.model.dto.CustomerFormDTO;
 import com.changan.model.po.Customer;
 import com.changan.model.po.CustomerPlate;
@@ -34,4 +35,6 @@ public interface ICustomerService extends IService<Customer> {
     CustomerPlate queryCustomerPlateById(Long id);
 
     void defaultPlate(Long id);
+
+    void updateMyInfo(AppCustomerUpdateDTO dto);
 }

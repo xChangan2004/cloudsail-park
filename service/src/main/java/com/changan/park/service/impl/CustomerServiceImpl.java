@@ -3,9 +3,14 @@ package com.changan.park.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.changan.common.enums.FileStatus;
+import com.changan.common.exceptions.BadRequestException;
 import com.changan.common.utils.StpKit;
+import com.changan.model.dto.AppCustomerUpdateDTO;
+import com.changan.model.po.SysFile;
 import com.changan.park.mapper.CustomerMapper;
 import com.changan.park.service.ICustomerPlateService;
 import com.changan.park.service.ICustomerService;
@@ -17,7 +22,9 @@ import com.changan.model.po.Customer;
 import com.changan.model.po.CustomerPlate;
 import com.changan.model.query.CustomerQuery;
 import com.changan.model.query.PlateQuery;
+import com.changan.park.service.IFileService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,11 +32,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> implements ICustomerService {
 
     private final ICustomerPlateService customerPlateService;
+
+    private final IFileService fileService;
 
     // 单个客户最大绑定车牌数量
     @Value("${parking.customer-plate.max-bind-count:5}")
@@ -225,6 +235,59 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
                 .set(CustomerPlate::getIsDefault, true).update();
     }
 
+    @Override
+    @Transactional
+    public void updateMyInfo(AppCustomerUpdateDTO dto) {
+        Customer customer = currentCustomer();
+        Long customerId = customer.getId();
+        String oldAvatar = customer.getAvatar();
+
+        LambdaUpdateWrapper<Customer> wrapper = new LambdaUpdateWrapper<Customer>()
+                .eq(Customer::getId, customerId);
+        boolean dirty = false;
+
+        // 1.昵称
+        String nickname = StrUtil.trim(dto.getNickname());
+        if (StrUtil.isNotBlank(nickname) && !nickname.equals(customer.getNickname())) {
+            wrapper.set(Customer::getNickname, nickname);
+            dirty = true;
+        }
+
+        // 2.头像
+        String avatar = StrUtil.trim(dto.getAvatar());
+        boolean avatarChanged = StrUtil.isNotBlank(avatar) && !avatar.equals(oldAvatar);
+        if (avatarChanged) {
+            // 只接受「本次刚传上来、还没被任何业务引用」的文件，
+            // 防止前端直接把任意 URL 塞进来当头像
+            boolean valid = fileService.lambdaQuery()
+                    .eq(SysFile::getUrl, avatar)
+                    .eq(SysFile::getStatus, FileStatus.TEMP)
+                    .exists();
+            if (!valid) {
+                throw new BadRequestException("头像文件不存在或已失效，请重新上传");
+            }
+            wrapper.set(Customer::getAvatar, avatar);
+            dirty = true;
+        }
+
+        // 3.一个字都没改，直接返回
+        if (!dirty) {
+            return;
+        }
+
+        update(wrapper);
+
+        // 4.新图转 USED，否则凌晨 03:30 的清理任务会当垃圾删掉
+        if (avatarChanged) {
+            fileService.markUsed(List.of(avatar));
+            // 5.旧图降回 TEMP，交给定时任务延迟删，留 24 小时反悔窗口
+            if (StrUtil.isNotBlank(oldAvatar)) {
+                fileService.release(List.of(oldAvatar));
+            }
+            log.info("[头像更换] customerId={}, old={}, new={}", customerId, oldAvatar, avatar);
+        }
+    }
+
     /**
      * 校验手机号唯一性
      *
@@ -242,5 +305,17 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         if (count > 0) {
             throw new BizIllegalException("手机号已经被他人使用，请更换");
         }
+    }
+
+    /**
+     * 取当前登录客户，顺带兜一下账号被删的情况
+     */
+    private Customer currentCustomer() {
+        Long customerId = StpKit.APP.getLoginIdAsLong();
+        Customer customer = getById(customerId);
+        if (customer == null) {
+            throw new BizIllegalException("账号不存在，请重新登录");
+        }
+        return customer;
     }
 }

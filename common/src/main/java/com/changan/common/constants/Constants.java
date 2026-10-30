@@ -114,6 +114,18 @@ public interface Constants {
          * 微信接口调用凭据刷新锁
          */
         String WX_ACCESS_TOKEN_LOCK = "app:wx:access:token:lock";
+        /**
+         * 文件上传限流key前缀
+         */
+        String UPLOAD_LIMIT_KEY_PREFIX = "app:file:upload:limit:";
+        /**
+         * 文件上传窗口内最大次数
+         */
+        int UPLOAD_LIMIT_COUNT = 20;
+        /**
+         * 文件上传限流窗口
+         */
+        Duration UPLOAD_LIMIT_WINDOW = Duration.ofMinutes(5);
     }
 
     interface Coupon {
