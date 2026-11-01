@@ -4,12 +4,17 @@ import com.changan.common.enums.CustomerCouponStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 @Schema(description = "用户端券包VO")
-public class AppCouponVO {
+public class AppCouponVO implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "优惠券ID")
     private Long id;
