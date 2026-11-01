@@ -12,11 +12,14 @@ import com.changan.common.enums.EntryExitStatus;
 import com.changan.model.po.EntryExitRecord;
 import com.changan.model.po.ParkingFacility;
 import com.changan.model.query.AppParkingLotQuery;
+import com.changan.model.vo.AppFeeRuleVO;
+import com.changan.model.vo.AppParkingLotDetailVO;
 import com.changan.model.vo.AppParkingLotVO;
 import com.changan.model.vo.FacilityItemVO;
 import com.changan.park.mapper.EntryExitRecordMapper;
 import com.changan.park.mapper.ParkingFacilityMapper;
 import com.changan.park.mapper.ParkingLotMapper;
+import com.changan.park.service.IFeeRuleService;
 import com.changan.park.service.IFileService;
 import com.changan.park.service.IParkingFacilityService;
 import com.changan.park.service.IParkingLotService;
@@ -35,6 +38,7 @@ import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -50,6 +54,8 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     private final IParkingFacilityService facilityService;
 
     private final IFileService fileService;
+
+    private final IFeeRuleService feeRuleService;
 
     /**
      * 启动时全量重建 GEO 索引。
@@ -269,6 +275,30 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         return subPage(voList, query);
     }
 
+    @Override
+    public AppParkingLotDetailVO getEnabledLotDetail(Long id, BigDecimal lng, BigDecimal lat) {
+        ParkingLot lot = getById(id);
+        if (lot == null || lot.getStatus() != CommonStatus.ENABLE) {
+            throw new BizIllegalException("车场不存在或已停用");
+        }
+
+        AppParkingLotDetailVO vo = BeanUtil.copyProperties(lot, AppParkingLotDetailVO.class);
+        long free = freeSpaces(lot.getTotalSpaces(), countOccupied(id));
+        vo.setFreeSpaces(free);
+        vo.setHasFree(free > 0);
+
+        if (CollUtil.isNotEmpty(lot.getFacilityCodes())) {
+            Map<String, FacilityItemVO> facMap = facilityService.codeItemMap();
+            vo.setFacilities(lot.getFacilityCodes().stream()
+                    .map(facMap::get).filter(Objects::nonNull).toList());
+        }
+
+        vo.setDistance(distanceMeters(lot, lng, lat));
+
+        vo.setFeeRule(AppFeeRuleVO.of(feeRuleService.getEnabledRuleOrNull(id)));
+        return vo;
+    }
+
     /**
      * 过滤 + 排序
      */
@@ -363,5 +393,21 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
                 .add(Constants.Lot.LOT_GEO_KEY,
                         new RedisGeoCommands.GeoLocation<>(lot.getId().toString(),
                                 new Point(lot.getLongitude().doubleValue(), lot.getLatitude().doubleValue())));
+    }
+
+    /**
+     * 计算距离
+     */
+    private static Long distanceMeters(ParkingLot lot, BigDecimal lng, BigDecimal lat) {
+        if (lng == null || lat == null || lot.getLongitude() == null || lot.getLatitude() == null) {
+            return null;
+        }
+        double lat1 = Math.toRadians(lat.doubleValue());
+        double lat2 = Math.toRadians(lot.getLatitude().doubleValue());
+        double dLat = lat2 - lat1;
+        double dLng = Math.toRadians(lot.getLongitude().doubleValue() - lng.doubleValue());
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return Math.round(2 * 6_371_000D * Math.asin(Math.sqrt(a)));
     }
 }

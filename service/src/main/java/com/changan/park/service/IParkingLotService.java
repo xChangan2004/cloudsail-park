@@ -7,7 +7,10 @@ import com.changan.model.dto.LotFormDTO;
 import com.changan.model.po.ParkingLot;
 import com.changan.model.query.AppParkingLotQuery;
 import com.changan.model.query.ParkingLotQuery;
+import com.changan.model.vo.AppParkingLotDetailVO;
 import com.changan.model.vo.AppParkingLotVO;
+
+import java.math.BigDecimal;
 
 public interface IParkingLotService extends IService<ParkingLot> {
 
@@ -24,4 +27,6 @@ public interface IParkingLotService extends IService<ParkingLot> {
     void updateParkingLotStatus(Long id, CommonStatus status);
 
     PageDTO<AppParkingLotVO> pageEnabledWithFreeCount(AppParkingLotQuery query);
+
+    AppParkingLotDetailVO getEnabledLotDetail(Long id, BigDecimal lng, BigDecimal lat);
 }
