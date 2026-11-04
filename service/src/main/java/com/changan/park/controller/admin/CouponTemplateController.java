@@ -54,7 +54,6 @@ public class CouponTemplateController {
     @GetMapping("/page")
     @Operation(summary = "分页查询模板信息")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "coupon:list")
-    @OperLog(type = "优惠券", subType = "分页查询模板信息")
     public R<PageDTO<CouponTemplatePageVO>> queryCouponTemplatePage(CouponTemplateQuery query) {
         return R.ok(couponTemplateService.queryCouponTemplatePage(query));
     }

@@ -27,7 +27,6 @@ public class DashboardController {
     @GetMapping("/cards")
     @Operation(summary = "获取看板卡片汇总指标")
     @SaCheckPermission(type = Constants.Admin.TYPE, value = "dashboard:view")
-    @OperLog(type = "数据看板", subType = "获取看板卡片汇总指标")
     public R<DashboardCardsVO> queryCards(@RequestParam(required = false) Long lotId) {
         return R.ok(dashboardService.queryCards(lotId));
     }
