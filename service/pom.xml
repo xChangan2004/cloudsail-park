@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.changan</groupId>
         <artifactId>cloudsail-park</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>service</artifactId>
@@ -24,7 +24,7 @@
         <dependency>
             <groupId>com.changan</groupId>
             <artifactId>model</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
