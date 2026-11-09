@@ -3,6 +3,7 @@ package com.changan.park.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.changan.common.domain.dto.PageDTO;
 import com.changan.common.enums.CommonStatus;
+import com.changan.model.dto.ProfileUpdateDTO;
 import com.changan.model.dto.UserLoginDTO;
 import com.changan.model.dto.UserSaveDTO;
 import com.changan.model.dto.UserUpdateDTO;
@@ -11,6 +12,8 @@ import com.changan.model.query.SysUserQuery;
 import com.changan.model.vo.LoginVO;
 import com.changan.model.vo.UserDetailVO;
 import com.changan.model.vo.UserPageVO;
+import com.changan.model.vo.UserProfileVO;
+import jakarta.validation.Valid;
 
 public interface ISysUserService extends IService<SysUser> {
 
@@ -31,4 +34,8 @@ public interface ISysUserService extends IService<SysUser> {
     void deleteUserById(Long id);
 
     void updateUser(UserUpdateDTO dto);
+
+    UserProfileVO queryProfile(Long userId);
+
+    void updateProfile(Long userId, ProfileUpdateDTO dto);
 }

@@ -3,6 +3,9 @@ package com.changan.park.controller.admin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.changan.common.config.operlog.OperLog;
 import com.changan.common.constants.Constants;
+import com.changan.common.utils.StpKit;
+import com.changan.model.dto.ProfileUpdateDTO;
+import com.changan.model.vo.UserProfileVO;
 import com.changan.park.service.ISysUserService;
 import com.changan.common.domain.R;
 import com.changan.common.domain.dto.PageDTO;
@@ -100,6 +103,20 @@ public class SysUserController {
     @OperLog(type = "系统用户", subType = "修改用户")
     public R<Void> updateUser(@Valid @RequestBody UserUpdateDTO dto) {
         userService.updateUser(dto);
+        return R.ok();
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "获取当前登录用户资料")
+    public R<UserProfileVO> queryProfile() {
+        return R.ok(userService.queryProfile(StpKit.ADMIN.getLoginIdAsLong()));
+    }
+
+    @PutMapping("/profile")
+    @Operation(summary = "修改当前登录用户资料")
+    @OperLog(type = "个人中心", subType = "修改资料")
+    public R<Void> updateProfile(@Valid @RequestBody ProfileUpdateDTO dto) {
+        userService.updateProfile(StpKit.ADMIN.getLoginIdAsLong(), dto);
         return R.ok();
     }
 }

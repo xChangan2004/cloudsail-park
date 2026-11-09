@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.changan.common.constants.Constants;
 import com.changan.common.utils.StpKit;
+import com.changan.model.dto.ProfileUpdateDTO;
 import com.changan.park.mapper.*;
 import com.changan.park.service.ISysUserService;
 import com.changan.common.domain.dto.PageDTO;
@@ -308,6 +309,74 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userRoleMapper.insert(roleList);
         // 5.强制踢出用户
         StpKit.ADMIN.kickout(dto.getId());
+    }
+
+    @Override
+    public UserProfileVO queryProfile(Long userId) {
+        // 1.查询用户基础信息
+        SysUser user = getById(userId);
+        if (user == null) {
+            throw new BadRequestException("用户不存在");
+        }
+        // 2.属性拷贝到VO
+        UserProfileVO vo = BeanUtil.copyProperties(user, UserProfileVO.class);
+        vo.setRoles(Collections.emptyList());
+        // 3.查询该用户关联的角色ID集合
+        List<Long> roleIds = userRoleMapper.selectList(
+                Wrappers.lambdaQuery(SysUserRole.class)
+                        .eq(SysUserRole::getUserId, userId)
+        ).stream().map(SysUserRole::getRoleId).toList();
+        if (CollUtil.isNotEmpty(roleIds)) {
+            // 4.根据角色ID查询启用中的角色
+            List<SysRole> sysRoles = roleMapper.selectList(
+                    Wrappers.lambdaQuery(SysRole.class)
+                            .in(SysRole::getId, roleIds)
+                            .eq(SysRole::getStatus, CommonStatus.ENABLE)
+            );
+            // 5.向vo设置收集好的角色名称
+            vo.setRoles(sysRoles.stream()
+                    .map(SysRole::getName)
+                    .toList());
+        }
+        // 6.返回vo
+        return vo;
+    }
+
+    @Override
+    public void updateProfile(Long userId, ProfileUpdateDTO dto) {
+        if (dto.getNickname() != null && StrUtil.isBlank(dto.getNickname())) {
+            throw new BizIllegalException("昵称不能为空");
+        }
+        SysUser exists = getById(userId);
+        if (exists == null) {
+            throw new BizIllegalException("用户不存在");
+        }
+        SysUser update = new SysUser();
+        update.setId(userId);
+        BeanUtil.copyProperties(dto, update, "password", "confirmPassword");
+
+        // 判断是否需要更改密码
+        boolean changingPwd = StrUtil.isNotBlank(dto.getPassword());
+        if (changingPwd) {
+            // 校验密码是否与确认密码一致
+            if (!dto.getPassword().equals(dto.getConfirmPassword())) {
+                throw new BizIllegalException("两次输入的密码不一致");
+            }
+            // 新密码不能与原密码相同
+            if (PasswordUtils.matches(dto.getPassword(), exists.getPassword())) {
+                throw new BizIllegalException("新密码不能与当前密码相同");
+            }
+            // 密码加密之后赋值
+            update.setPassword(PasswordUtils.encode(dto.getPassword()));
+        }
+
+        // 执行更新
+        updateById(update);
+
+        // 如果修改了密码，就需要将用户踢下线
+        if (changingPwd) {
+            StpKit.ADMIN.kickout(userId);
+        }
     }
 
     /**
