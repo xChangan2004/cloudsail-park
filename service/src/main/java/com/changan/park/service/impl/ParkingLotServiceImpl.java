@@ -233,10 +233,11 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
     @Override
     public PageDTO<AppParkingLotVO> pageEnabledWithFreeCount(AppParkingLotQuery query) {
         // 1.GEO_RADIUS：中心点+半径，返回member(lotId)和distance
+        double radiusMeters = query.getRadiusKm().doubleValue() * 1000D;
         GeoResults<RedisGeoCommands.GeoLocation<Object>> results = redisTemplate.opsForGeo()
                 .radius(Constants.Lot.LOT_GEO_KEY,
                         new Circle(new Point(query.getLng().doubleValue(), query.getLat().doubleValue()),
-                                new Distance(query.getRadiusKm().doubleValue(), Metrics.KILOMETERS)),
+                                new Distance(radiusMeters, RedisGeoCommands.DistanceUnit.METERS)),
                         RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeDistance()
                 );
         if (results == null || CollUtil.isEmpty(results.getContent())) {
@@ -245,7 +246,7 @@ public class ParkingLotServiceImpl extends ServiceImpl<ParkingLotMapper, Parking
         Map<String, Long> distanceMap = new HashMap<>();
         results.getContent().forEach(r ->
                 distanceMap.put(r.getContent().getName().toString(),
-                        ((Number) r.getDistance().getValue()).longValue()));
+                        Math.round(r.getDistance().getValue())));
 
         // 2.回MySQL：只查GEO给出的ID中，启用中+name匹配的（GEO不知道status和name）
         List<Long> candidateIds = distanceMap.keySet().stream()
